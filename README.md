@@ -29,7 +29,7 @@ Ce dépôt héberge les ressources utilisées par [fr-scp-fundation.wikidot.com]
 ## Installation rapide
 
 1. Ouvrir le [guide d'installation Wikidot](docs/INSTALLATION-WIKIDOT.md).
-2. Installer `wikidot/component-theme.txt` dans la page `component:theme`.
+2. Installer le thème globalement, ou utiliser `wikidot/component-theme.txt` pour un chargement page par page.
 3. Copier les modèles `start`, `nav:top` et `nav:side` dans les pages correspondantes.
 4. Remplacer ensuite les textes, liens et catégories par ceux du wiki.
 
@@ -53,4 +53,3 @@ Le fichier chargé par Wikidot est :
 Le thème repose sur **Sigma-9 CT Aleph** et sur des ressources créées par la communauté SCP. Les auteurs d'origine et les licences sont détaillés dans [CREDITS.md](CREDITS.md) et dans les en-têtes des fichiers concernés.
 
 Sauf mention contraire, les adaptations de ce dépôt sont publiées sous licence [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/deed.fr).
-
