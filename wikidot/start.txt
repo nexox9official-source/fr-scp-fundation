@@ -1,0 +1,59 @@
+[[div class="ls-hero"]]
+[[div class="ls-kicker"]]BASE DE DONNÉES FRANCOPHONE[[/div]]
+# Fondation SCP
+**Sécuriser. Contenir. Protéger.**
+
+Bienvenue sur un projet communautaire consacré à l'univers de la Fondation SCP. Consultez les dossiers, explorez les récits et participez à la construction du wiki.
+
+[[div class="ls-actions"]]
+[[[scp-series|Explorer les dossiers SCP]]]
+[[[guide-du-nouveau|Commencer ici]]]
+[[/div]]
+[[/div]]
+
+[[div class="ls-notice"]]
+**Projet non officiel :** ce site n'est ni affilié ni approuvé par la branche francophone officielle de la Fondation SCP. Les contenus sont publiés sous licence CC BY-SA 3.0 sauf mention contraire.
+[[/div]]
+
+[[div class="ls-grid"]]
+[[div class="ls-card"]]
+## Dossiers SCP
+Accédez aux rapports de confinement, classifications et documents consacrés aux anomalies répertoriées.
+
+[[[scp-series|Consulter l'index →]]]
+[[/div]]
+
+[[div class="ls-card"]]
+## Bibliothèque
+Découvrez les récits, journaux, rapports d'incident et autres histoires de cet univers collaboratif.
+
+[[[bibliotheque|Ouvrir la bibliothèque →]]]
+[[/div]]
+
+[[div class="ls-card"]]
+## Contribuer
+Lisez les règles, préparez votre brouillon et découvrez comment proposer un nouveau contenu au wiki.
+
+[[[contribuer|Voir le guide →]]]
+[[/div]]
+[[/div]]
+
+[[div class="ls-section"]]
+## Commencer l'exploration
+
+[[div class="ls-columns"]]
+[[div]]
+### Pour les nouveaux lecteurs
+* [[[guide-du-nouveau|Comprendre le fonctionnement du site]]]
+* [[[glossaire|Consulter le glossaire]]]
+* [[[classifications|Découvrir les classes d'objets]]]
+[[/div]]
+
+[[div]]
+### Vie du wiki
+* [[[system:recent-changes|Modifications récentes]]]
+* [[[forum:start|Discussions du forum]]]
+* [[[a-propos|À propos du projet]]]
+[[/div]]
+[[/div]]
+[[/div]]
