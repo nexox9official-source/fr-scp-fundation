@@ -5,7 +5,7 @@
 /*
  * Personnalisation du projet fr-scp-fundation.
  * Base : Sigma-9 CT Aleph, CC BY-SA 3.0.
- * Ce fichier contient uniquement les ajouts propres au projet.
+ * Direction : wiki sobre, lisible, rapide et sans animation.
  */
 
 :root {
@@ -14,8 +14,7 @@
     --accent-1-lighter: #d52a42;
     --ls-ink: #19191c;
     --ls-paper: #f7f7f5;
-    --ls-line: rgba(93, 0, 14, 0.18);
-    --ls-shadow: 0 16px 45px rgba(20, 0, 4, 0.12);
+    --ls-line: #d8d1d2;
     --ct_col_h1-txt: #8a0015;
     --ct_col_link: var(--accent-1);
     --ct_col_link-visited: var(--accent-1-darker);
@@ -27,10 +26,20 @@
     --ct_col_searchbox-gradient-4: #b94859;
 }
 
+/* Le wiki reste volontairement statique : aucun mouvement ni transition. */
+html {
+    scroll-behavior: auto !important;
+}
+
+*,
+*::before,
+*::after {
+    animation: none !important;
+    transition: none !important;
+}
+
 body {
-    background:
-        radial-gradient(circle at 14% 15%, rgba(163, 0, 24, 0.045), transparent 27rem),
-        linear-gradient(180deg, #fff 0, var(--ls-paper) 100%);
+    background: var(--ls-paper);
 }
 
 #main-content {
@@ -38,7 +47,9 @@ body {
 }
 
 #page-content {
+    color: var(--ls-ink);
     font-size: 1rem;
+    line-height: 1.65;
 }
 
 #page-content a {
@@ -46,137 +57,100 @@ body {
 }
 
 #page-title {
-    letter-spacing: -0.025em;
+    letter-spacing: -0.015em;
 }
 
 .ls-hero {
-    position: relative;
-    isolation: isolate;
-    margin: 0 0 1.5rem;
-    padding: clamp(2rem, 6vw, 4.8rem) clamp(1.25rem, 5vw, 4rem);
-    overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 0.8rem;
+    margin: 0 0 1.25rem;
+    padding: 1.5rem;
+    border: 1px solid #52000c;
+    border-left: 0.4rem solid var(--accent-1);
     color: #fff;
-    background:
-        linear-gradient(115deg, rgba(20, 0, 4, 0.96), rgba(92, 0, 14, 0.92)),
-        var(--ct_bg_header-image) center / cover;
-    box-shadow: var(--ls-shadow);
-}
-
-.ls-hero::after {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    right: clamp(-3.5rem, -4vw, -1rem);
-    bottom: clamp(-4.5rem, -6vw, -2rem);
-    width: clamp(11rem, 28vw, 21rem);
-    aspect-ratio: 1;
-    opacity: 0.12;
-    background: var(--ct_bg_header-logo) center / contain no-repeat;
-    filter: grayscale(1) brightness(5);
+    background: #260006;
 }
 
 .ls-hero h1 {
-    max-width: 13ch;
-    margin: 0.15em 0;
+    margin: 0.2rem 0 0.6rem;
     color: #fff;
-    font-size: clamp(2.5rem, 7vw, 5.4rem);
-    line-height: 0.95;
-    letter-spacing: -0.055em;
-    text-shadow: 0 4px 22px rgba(0, 0, 0, 0.35);
+    font-size: clamp(2rem, 5vw, 2.8rem);
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+    text-shadow: none;
 }
 
 .ls-hero > p {
-    max-width: 60ch;
-    font-size: clamp(1rem, 2vw, 1.15rem);
-    line-height: 1.65;
+    max-width: 68ch;
+    margin-bottom: 0;
+    line-height: 1.6;
 }
 
 .ls-kicker {
-    color: #f0cbd1;
-    font-size: 0.76rem;
-    font-weight: 800;
-    letter-spacing: 0.2em;
+    color: #edcbd0;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
 }
 
 .ls-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.75rem;
-    margin-top: 1.5rem;
+    gap: 0.55rem;
+    margin-top: 1rem;
 }
 
 .ls-actions a {
-    display: inline-flex;
-    align-items: center;
-    min-height: 2.8rem;
-    padding: 0.7rem 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    border-radius: 0.35rem;
+    display: inline-block;
+    padding: 0.55rem 0.8rem;
+    border: 1px solid #d9b9be;
     color: #fff !important;
-    background: rgba(255, 255, 255, 0.1);
-    font-weight: 800;
+    background: #4e000c;
+    font-weight: 700;
     text-decoration: none !important;
-    backdrop-filter: blur(8px);
-    transition: transform 160ms ease, background 160ms ease;
 }
 
 .ls-actions a:first-child {
     border-color: #fff;
-    color: #760012 !important;
+    color: #690010 !important;
     background: #fff;
 }
 
 .ls-actions a:hover,
 .ls-actions a:focus-visible {
-    transform: translateY(-2px);
-    background: rgba(255, 255, 255, 0.2);
-}
-
-.ls-actions a:first-child:hover,
-.ls-actions a:first-child:focus-visible {
-    background: #f7e9ec;
+    text-decoration: underline !important;
 }
 
 .ls-notice {
     margin: 1.25rem 0;
-    padding: 0.9rem 1rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid #d6b9bd;
     border-left: 0.3rem solid var(--accent-1);
-    background: rgba(163, 0, 24, 0.07);
+    background: #f4e7e9;
     font-size: 0.92rem;
 }
 
 .ls-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1rem;
-    margin: 1.5rem 0;
+    gap: 0.8rem;
+    margin: 1.25rem 0;
 }
 
 .ls-card,
 .ls-section {
     border: 1px solid var(--ls-line);
-    border-radius: 0.65rem;
-    background: rgba(255, 255, 255, 0.88);
-    box-shadow: 0 8px 26px rgba(24, 0, 4, 0.06);
+    background: #fff;
+    box-shadow: none;
 }
 
 .ls-card {
-    padding: 1.2rem;
-    transition: transform 160ms ease, box-shadow 160ms ease;
-}
-
-.ls-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 14px 34px rgba(24, 0, 4, 0.1);
+    padding: 1rem;
 }
 
 .ls-card h2 {
     margin-top: 0;
     color: var(--ls-ink);
-    font-size: 1.25rem;
-    letter-spacing: -0.02em;
+    font-size: 1.2rem;
+    letter-spacing: 0;
 }
 
 .ls-card p:last-child {
@@ -184,8 +158,8 @@ body {
 }
 
 .ls-section {
-    margin: 1.5rem 0;
-    padding: clamp(1.2rem, 3vw, 2rem);
+    margin: 1.25rem 0;
+    padding: 1.1rem;
 }
 
 .ls-section > h2:first-child {
@@ -195,11 +169,11 @@ body {
 .ls-columns {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: clamp(1rem, 4vw, 3rem);
+    gap: 2rem;
 }
 
 .side-block {
-    border-radius: 0.45rem;
+    border-radius: 0;
 }
 
 @media (max-width: 760px) {
@@ -209,7 +183,7 @@ body {
     }
 
     .ls-hero {
-        border-radius: 0.5rem;
+        padding: 1rem;
     }
 
     .ls-actions {
@@ -217,17 +191,8 @@ body {
     }
 
     .ls-actions a {
-        justify-content: center;
         width: 100%;
         box-sizing: border-box;
         text-align: center;
     }
 }
-
-@media (prefers-reduced-motion: reduce) {
-    .ls-actions a,
-    .ls-card {
-        transition: none;
-    }
-}
-
