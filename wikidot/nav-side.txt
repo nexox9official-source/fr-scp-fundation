@@ -1,0 +1,28 @@
+[[div class="side-block"]]
+**Navigation**
+* [[[start|Accueil]]]
+* [[[scp-series|Dossiers SCP]]]
+* [[[bibliotheque|Bibliothèque]]]
+* [[[system:recent-changes|Modifications récentes]]]
+* [[[random:random-page|Page aléatoire]]]
+[[/div]]
+
+[[div class="side-block"]]
+**Participer**
+* [[[guide-du-nouveau|Guide du nouveau]]]
+* [[[contribuer|Proposer un article]]]
+* [[[reglement|Règlement]]]
+* [[[forum:start|Forum]]]
+[[/div]]
+
+[[div class="side-block media"]]
+**Rechercher**
+[[module Search mini="true" button="Rechercher"]]
+[[/div]]
+
+[[div class="side-block"]]
+**Projet**
+* [[[a-propos|À propos]]]
+* [[[credits|Crédits et licence]]]
+[[/div]]
+
