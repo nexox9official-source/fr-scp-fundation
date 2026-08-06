@@ -1,15 +1,65 @@
-<!DOCTYPE html>
-<html lang="fr" dir="ltr">
-  <head>
-    <meta charset="utf-8">
-    <title>Accueil</title>
-  </head>
-  <body>
-    <h1>Bienvenue sur la base de données annexe de la Fondation SCP !</h1>
-    <p>
-      Ce site sert à héberger et tester des codes divers utilisés sur le <a href="http://fondationscp.wikidot.com/">site de la Fondation SCP</a>. Son accès est public, mais il n'héberge à ce jour pas d'articles ou de contenu conçu pour la lecture. Merci de votre visite cependant :)
-      <br>
-      Si vous êtes intéressé par un ou plusieurs éléments d'un dépôt de code créé par le compte Github officiel du site, n'hésitez pas à <a href="http://fondationscp.fr/contact">contacter un membre du staff</a> pour en discuter. Les questions de membres de la communauté et coups de main éventuels de contributeurs qualifiés sont toujours bienvenus ! 
-    </p>
-  </body>
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Ressources GitHub du projet communautaire FR SCP Foundation sur Wikidot.">
+  <title>FR SCP Foundation — Ressources Wikidot</title>
+  <style>
+    :root { color-scheme: dark; --red:#b4001c; --red-dark:#65000f; --ink:#0d0d10; --paper:#f4f1f1; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; color:#fff; font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; background:radial-gradient(circle at 75% 10%,rgba(180,0,28,.26),transparent 28rem),linear-gradient(145deg,#09090b,#181318 62%,#240008); }
+    a { color:inherit; }
+    .shell { width:min(1120px,calc(100% - 2rem)); margin:auto; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:1.2rem 0; }
+    .brand { display:flex; align-items:center; gap:.8rem; font-weight:850; letter-spacing:.02em; }
+    .brand img { width:42px; height:42px; }
+    nav { display:flex; flex-wrap:wrap; gap:.75rem; }
+    nav a { color:#e6dfe1; font-size:.92rem; text-decoration:none; }
+    nav a:hover { color:#fff; }
+    main { padding:clamp(3rem,8vw,7rem) 0 4rem; }
+    .eyebrow { margin:0 0 .8rem; color:#efa7b2; font-size:.75rem; font-weight:850; letter-spacing:.22em; }
+    h1 { max-width:12ch; margin:0; font-size:clamp(3.2rem,10vw,7.5rem); line-height:.86; letter-spacing:-.075em; }
+    .lead { max-width:61ch; margin:1.5rem 0 0; color:#d4cdd0; font-size:clamp(1rem,2vw,1.18rem); }
+    .actions { display:flex; flex-wrap:wrap; gap:.8rem; margin-top:2rem; }
+    .button { display:inline-flex; min-height:3rem; align-items:center; padding:.75rem 1rem; border:1px solid rgba(255,255,255,.24); border-radius:.45rem; background:rgba(255,255,255,.07); font-weight:800; text-decoration:none; }
+    .button.primary { border-color:#fff; color:var(--red-dark); background:#fff; }
+    .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; margin-top:clamp(3rem,7vw,6rem); }
+    .card { min-height:12rem; padding:1.3rem; border:1px solid rgba(255,255,255,.12); border-radius:.7rem; background:rgba(255,255,255,.055); backdrop-filter:blur(12px); }
+    .card h2 { margin:.1rem 0 .55rem; font-size:1.2rem; }
+    .card p { color:#c9c1c4; }
+    .card a { color:#fff; font-weight:800; text-underline-offset:.2em; }
+    .notice { margin-top:2rem; padding:1rem; border-left:4px solid var(--red); color:#d6cfd1; background:rgba(180,0,28,.1); }
+    footer { padding:1.5rem 0 2.5rem; color:#91898c; font-size:.85rem; }
+    @media (max-width:760px) { header { align-items:flex-start; flex-direction:column; } .grid { grid-template-columns:1fr; } h1 { font-size:clamp(3.2rem,18vw,5.5rem); } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="brand"><img src="theme/images/header-logo.svg" alt=""><span>FR SCP FOUNDATION</span></div>
+      <nav aria-label="Navigation principale">
+        <a href="https://github.com/nexox9official-source/fr-scp-fundation">Dépôt GitHub</a>
+        <a href="docs/INSTALLATION-WIKIDOT.md">Installation</a>
+        <a href="theme/project.css">Thème CSS</a>
+      </nav>
+    </header>
+    <main>
+      <p class="eyebrow">RESSOURCES POUR WIKIDOT</p>
+      <h1>Sécuriser. Contenir. Protéger.</h1>
+      <p class="lead">Le dépôt technique du projet communautaire FR SCP Foundation : thème visuel, composants Wikidot, modèles de pages et documentation d'installation.</p>
+      <div class="actions">
+        <a class="button primary" href="http://fr-scp-fundation.wikidot.com/">Ouvrir le wiki</a>
+        <a class="button" href="docs/INSTALLATION-WIKIDOT.md">Lire le guide d'installation</a>
+      </div>
+      <section class="grid" aria-label="Ressources principales">
+        <article class="card"><h2>Thème</h2><p>Une base Sigma-9 complétée par une couche visuelle propre au projet et adaptée au mobile.</p><a href="theme/project.css">Voir project.css</a></article>
+        <article class="card"><h2>Pages Wikidot</h2><p>Les codes de la page d'accueil, de la navigation supérieure et de la barre latérale.</p><a href="https://github.com/nexox9official-source/fr-scp-fundation/tree/main/wikidot">Voir les modèles</a></article>
+        <article class="card"><h2>Documentation</h2><p>Une installation guidée pour relier GitHub Pages au thème personnalisé de Wikidot.</p><a href="docs/INSTALLATION-WIKIDOT.md">Commencer</a></article>
+      </section>
+      <div class="notice"><strong>Projet non officiel.</strong> Ce site n'est ni affilié ni approuvé par la branche francophone officielle de la Fondation SCP ou par Wikidot.</div>
+    </main>
+    <footer>Contenus et adaptations sous CC BY-SA 3.0 sauf mention contraire — crédits détaillés dans le dépôt.</footer>
+  </div>
+</body>
 </html>

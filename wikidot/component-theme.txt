@@ -1,0 +1,4 @@
+[[module CSS]]
+@import url("https://nexox9official-source.github.io/fr-scp-fundation/theme/project.css");
+[[/module]]
+

@@ -1,0 +1,15 @@
+* [[[start|Accueil]]]
+* Dossiers SCP
+ * [[[scp-series|Toutes les séries]]]
+ * [[[scp-001|Propositions SCP-001]]]
+ * [[[objets-anormaux|Objets anormaux]]]
+* Bibliothèque
+ * [[[bibliotheque|Tous les récits]]]
+ * [[[rapports|Rapports et journaux]]]
+ * [[[canons|Canons]]]
+* Communauté
+ * [[[guide-du-nouveau|Bien débuter]]]
+ * [[[contribuer|Contribuer]]]
+ * [[[forum:start|Forum]]]
+* [[[a-propos|À propos]]]
+
