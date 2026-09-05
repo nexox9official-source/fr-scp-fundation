@@ -34,7 +34,13 @@ jobs:
           Invoke-WebRequest -Uri "https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip" -OutFile "$env:RUNNER_TEMP\steamcmd.zip"
           Expand-Archive "$env:RUNNER_TEMP\steamcmd.zip" -DestinationPath "$env:RUNNER_TEMP\steamcmd" -Force
           New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\scpsl_server" | Out-Null
+
+          # First launch lets SteamCMD update itself before the real install command.
+          & "$env:RUNNER_TEMP\steamcmd\steamcmd.exe" +quit
+          if ($LASTEXITCODE -ne 0) { Write-Host "SteamCMD updater returned $LASTEXITCODE; continuing with updated client." }
+
           & "$env:RUNNER_TEMP\steamcmd\steamcmd.exe" +force_install_dir "$env:GITHUB_WORKSPACE\scpsl_server" +login anonymous +app_update 996560 validate +quit
+          if ($LASTEXITCODE -ne 0) { throw "SCP SL server install failed with exit code $LASTEXITCODE" }
 
       - name: Verify server references
         shell: pwsh
