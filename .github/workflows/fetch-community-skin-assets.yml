@@ -1,0 +1,94 @@
+name: Fetch community skin assets
+
+on:
+  push:
+    branches:
+      - siterp-core-build
+    paths:
+      - '.github/workflows/fetch-community-skin-assets.yml'
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install converters
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y assimp-utils unzip
+
+      - name: Download selected community assets
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p out/raw out/obj out/licenses
+
+          # Stratofortress - Gas Mask - CC0
+          curl -fL --retry 4 -A 'Mozilla/5.0' -o out/raw/gasmask.zip \
+            https://opengameart.org/sites/default/files/gasmask.zip
+          unzip -o out/raw/gasmask.zip -d out/raw/gasmask
+
+          # hc / hackcraft.de - Combat Helmet - CC-BY 3.0
+          curl -fL --retry 4 -A 'Mozilla/5.0' -o out/raw/combat_helmet.zip \
+            https://opengameart.org/sites/default/files/helmet_20120207.zip
+          unzip -o out/raw/combat_helmet.zip -d out/raw/combat_helmet
+
+          # hc / hackcraft.de - Army Backpack - CC-BY 3.0
+          curl -fL --retry 4 -A 'Mozilla/5.0' -o out/raw/army_backpack.zip \
+            https://opengameart.org/sites/default/files/backpack_20120212.zip
+          unzip -o out/raw/army_backpack.zip -d out/raw/army_backpack
+
+          cat > out/licenses/ATTRIBUTION.txt <<'EOF'
+          COMMUNITY ASSETS USED BY SITERP
+          ===============================
+
+          1) Gas Mask
+             Author: Stratofortress
+             Source: https://opengameart.org/content/gas-mask
+             License: CC0
+
+          2) Combat Helmet
+             Author: hc / donation by hackcraft.de
+             Source: https://opengameart.org/content/combat-helmet
+             License: CC-BY 3.0
+
+          3) Army Backpack
+             Author: hc / donation by hackcraft.de
+             Source: https://opengameart.org/content/army-backpack
+             License: CC-BY 3.0
+
+          Adaptations for SCP: Secret Laboratory / ProjectMER keep this attribution file.
+          EOF
+
+      - name: Normalize models to OBJ
+        shell: bash
+        run: |
+          set -euxo pipefail
+          find out/raw -type f | sort
+
+          # Prefer OBJ when present. Otherwise convert FBX with assimp.
+          helmet=$(find out/raw/combat_helmet -type f -iname '*.obj' | head -n1 || true)
+          backpack=$(find out/raw/army_backpack -type f -iname '*.obj' | head -n1 || true)
+          gasobj=$(find out/raw/gasmask -type f -iname '*.obj' | head -n1 || true)
+          gasfbx=$(find out/raw/gasmask -type f -iname '*.fbx' | head -n1 || true)
+
+          test -n "$helmet"
+          test -n "$backpack"
+          cp "$helmet" out/obj/community_combat_helmet.obj
+          cp "$backpack" out/obj/community_army_backpack.obj
+
+          if [ -n "$gasobj" ]; then
+            cp "$gasobj" out/obj/community_gasmask.obj
+          else
+            test -n "$gasfbx"
+            assimp export "$gasfbx" out/obj/community_gasmask.obj -f objnomtl
+          fi
+
+          wc -l out/obj/*.obj
+
+      - name: Upload normalized community assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: SiteRP-Community-Skin-Source-Assets
+          path: out/
+          if-no-files-found: error
