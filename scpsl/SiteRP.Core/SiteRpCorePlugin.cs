@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using LabApi.Events.CustomHandlers;
 using LabApi.Features;
-using LabApi.Features.Console;
 using LabApi.Features.Wrappers;
 using LabApi.Loader.Features.Plugins;
 using PlayerRoles;
 using UnityEngine;
+using LabLogger = LabApi.Features.Console.Logger;
 
 namespace SiteRP.Core;
 
@@ -38,7 +38,7 @@ public sealed class SiteRpCorePlugin : Plugin
         if (PermanentRoundEnabled)
             Round.IsLocked = true;
 
-        Logger.Info("[SiteRP.Core] v0.1.0 active - RP permanent enabled.");
+        LabLogger.Info("[SiteRP.Core] v0.1.0 active - RP permanent enabled.");
     }
 
     public override void Disable()
@@ -57,7 +57,7 @@ public sealed class SiteRpCorePlugin : Plugin
         StaffSnapshots.Clear();
         Round.IsLocked = false;
         Instance = null;
-        Logger.Info("[SiteRP.Core] disabled.");
+        LabLogger.Info("[SiteRP.Core] disabled.");
     }
 
     public static bool IsStaffMode(Player player) =>
