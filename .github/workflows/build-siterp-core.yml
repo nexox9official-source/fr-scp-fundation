@@ -7,6 +7,12 @@ on:
     paths:
       - 'scpsl/SiteRP.Core/**'
       - '.github/workflows/build-siterp-core.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'scpsl/SiteRP.Core/**'
+      - '.github/workflows/build-siterp-core.yml'
   workflow_dispatch:
 
 jobs:
