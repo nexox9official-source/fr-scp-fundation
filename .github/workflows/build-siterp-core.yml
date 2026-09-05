@@ -1,0 +1,52 @@
+name: Build SiteRP.Core
+
+on:
+  push:
+    branches:
+      - siterp-core-build
+    paths:
+      - 'scpsl/SiteRP.Core/**'
+      - '.github/workflows/build-siterp-core.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install SteamCMD and SCP SL dedicated server
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip" -OutFile "$env:RUNNER_TEMP\steamcmd.zip"
+          Expand-Archive "$env:RUNNER_TEMP\steamcmd.zip" -DestinationPath "$env:RUNNER_TEMP\steamcmd" -Force
+          New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\scpsl_server" | Out-Null
+          & "$env:RUNNER_TEMP\steamcmd\steamcmd.exe" +force_install_dir "$env:GITHUB_WORKSPACE\scpsl_server" +login anonymous +app_update 996560 validate +quit
+
+      - name: Verify server references
+        shell: pwsh
+        run: |
+          $managed = "$env:GITHUB_WORKSPACE\scpsl_server\SCPSL_Data\Managed"
+          if (!(Test-Path "$managed\LabAPI.dll")) { throw "LabAPI.dll not found in $managed" }
+          if (!(Test-Path "$managed\Assembly-CSharp.dll")) { throw "Assembly-CSharp.dll not found in $managed" }
+          Write-Host "Using SCP SL references from $managed"
+
+      - name: Build SiteRP.Core
+        shell: pwsh
+        run: |
+          $managed = "$env:GITHUB_WORKSPACE\scpsl_server\SCPSL_Data\Managed"
+          dotnet build "$env:GITHUB_WORKSPACE\scpsl\SiteRP.Core\SiteRP.Core.csproj" -c Release -p:SL_REFERENCES="$managed"
+
+      - name: Upload DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: SiteRP.Core
+          path: scpsl/SiteRP.Core/bin/Release/net48/SiteRP.Core.dll
+          if-no-files-found: error
