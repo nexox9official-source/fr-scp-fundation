@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using LabApi.Events.CustomHandlers;
 using LabApi.Features;
 using LabApi.Features.Wrappers;
@@ -13,9 +14,9 @@ namespace SiteRP.Core;
 public sealed class SiteRpCorePlugin : Plugin
 {
     public override string Name => "SiteRP.Core";
-    public override string Description => "Persistent SCP:SL roleplay core: permanent round, containment controls and staff mode.";
+    public override string Description => "Persistent SCP:SL roleplay core: permanent round, containment controls, clean facility and staff mode.";
     public override string Author => "SiteRP";
-    public override Version Version => new(0, 1, 0);
+    public override Version Version => new(0, 2, 0);
     public override Version RequiredApiVersion { get; } = new(LabApiProperties.CompiledVersion);
 
     internal static SiteRpCorePlugin? Instance { get; private set; }
@@ -28,6 +29,13 @@ public sealed class SiteRpCorePlugin : Plugin
     public static bool BlockWarhead { get; set; } = true;
     public static bool BlockEscapes { get; set; } = true;
 
+    // SiteRP Clean: removes ragdolls that already exist when the facility is generated.
+    // Real player corpses created later in the RP are NOT automatically removed.
+    public static bool CleanDecorativeRagdolls { get; set; } = true;
+
+    // Keeps the operational-site look by preventing new blood decals during gameplay.
+    public static bool BlockBloodDecals { get; set; } = true;
+
     internal static Dictionary<string, StaffSnapshot> StaffSnapshots { get; } = new(StringComparer.OrdinalIgnoreCase);
 
     public override void Enable()
@@ -38,7 +46,7 @@ public sealed class SiteRpCorePlugin : Plugin
         if (PermanentRoundEnabled)
             Round.IsLocked = true;
 
-        LabLogger.Info("[SiteRP.Core] v0.1.0 active - RP permanent enabled.");
+        LabLogger.Info("[SiteRP.Core] v0.2.0 active - RP permanent + SiteRP Clean enabled.");
     }
 
     public override void Disable()
@@ -58,6 +66,22 @@ public sealed class SiteRpCorePlugin : Plugin
         Round.IsLocked = false;
         Instance = null;
         LabLogger.Info("[SiteRP.Core] disabled.");
+    }
+
+    internal static int CleanupDecorativeRagdolls(string phase)
+    {
+        if (!CleanDecorativeRagdolls)
+            return 0;
+
+        Ragdoll[] ragdolls = Ragdoll.List.ToArray();
+        foreach (Ragdoll ragdoll in ragdolls)
+        {
+            if (!ragdoll.IsDestroyed)
+                ragdoll.Destroy();
+        }
+
+        LabLogger.Info($"[SiteRP.Clean] {phase}: removed {ragdolls.Length} pre-existing ragdoll(s). Real player corpses spawned afterwards remain enabled.");
+        return ragdolls.Length;
     }
 
     public static bool IsStaffMode(Player player) =>
