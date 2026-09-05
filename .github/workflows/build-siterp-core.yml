@@ -33,9 +33,11 @@ jobs:
       - name: Download SCP SL managed references
         shell: pwsh
         run: |
-          $builder = "$env:RUNNER_TEMP\SecretLabDependenciesBuilder"
-          git clone --depth 1 https://github.com/Jesus-QC/SecretLabDependenciesBuilder.git $builder
-          if ($LASTEXITCODE -ne 0) { throw "Unable to clone SecretLabDependenciesBuilder." }
+          $builder = "$env:RUNNER_TEMP\slrefs"
+          New-Item -ItemType Directory -Force -Path $builder | Out-Null
+          $exe = "$builder\SecretLabDependenciesBuilder.exe"
+
+          Invoke-WebRequest -Uri "https://github.com/Jesus-QC/SecretLabDependenciesBuilder/releases/download/1.3.0.0/SecretLabDependenciesBuilder.exe" -OutFile $exe
 
           @"
           AssembliesToPublicize:
@@ -47,15 +49,27 @@ jobs:
           ReferencesFolderName: References
           "@ | Set-Content -Path "$builder\config.yml" -Encoding utf8
 
-          Push-Location $builder
-          try {
-            # Input 1: no beta branch. Input 2: confirm defaults.
-            "`n`n" | dotnet run --project .\SecretLabDependenciesBuilder\SecretLabDependenciesBuilder.csproj -c Release
-            if ($LASTEXITCODE -ne 0) { throw "SecretLabDependenciesBuilder failed with exit code $LASTEXITCODE" }
-          }
-          finally {
-            Pop-Location
-          }
+          $psi = [System.Diagnostics.ProcessStartInfo]::new()
+          $psi.FileName = $exe
+          $psi.WorkingDirectory = $builder
+          $psi.UseShellExecute = $false
+          $psi.RedirectStandardInput = $true
+          $psi.RedirectStandardOutput = $true
+          $psi.RedirectStandardError = $true
+          $psi.CreateNoWindow = $true
+
+          $process = [System.Diagnostics.Process]::new()
+          $process.StartInfo = $psi
+          [void]$process.Start()
+          $process.StandardInput.WriteLine("")
+          $process.StandardInput.WriteLine("")
+          $process.StandardInput.Close()
+          $stdout = $process.StandardOutput.ReadToEnd()
+          $stderr = $process.StandardError.ReadToEnd()
+          $process.WaitForExit()
+          Write-Host $stdout
+          if ($stderr) { Write-Host $stderr }
+          if ($process.ExitCode -ne 0) { throw "SecretLabDependenciesBuilder failed with exit code $($process.ExitCode)" }
 
           $refs = "$builder\References"
           if (!(Test-Path "$refs\Assembly-CSharp.dll")) { throw "Assembly-CSharp.dll missing from downloaded references." }
