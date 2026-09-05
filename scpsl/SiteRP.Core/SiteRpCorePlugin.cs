@@ -14,9 +14,9 @@ namespace SiteRP.Core;
 public sealed class SiteRpCorePlugin : Plugin
 {
     public override string Name => "SiteRP.Core";
-    public override string Description => "Persistent SCP:SL roleplay core: permanent round, containment controls, clean facility, safe map survey and staff mode.";
+    public override string Description => "Persistent SCP:SL roleplay core: permanent round, containment controls, clean operational facility, safe map survey and staff mode.";
     public override string Author => "SiteRP";
-    public override Version Version => new(0, 3, 0);
+    public override Version Version => new(0, 4, 0);
     public override Version RequiredApiVersion { get; } = new(LabApiProperties.CompiledVersion);
 
     internal static SiteRpCorePlugin? Instance { get; private set; }
@@ -29,16 +29,19 @@ public sealed class SiteRpCorePlugin : Plugin
     public static bool BlockWarhead { get; set; } = true;
     public static bool BlockEscapes { get; set; } = true;
 
-    // SiteRP Clean: removes ragdolls that already exist when the facility is generated.
-    // Real player corpses created later in the RP are NOT automatically removed.
+    // SiteRP Clean: removes network ragdolls already present when the facility is generated.
+    // The v0.3 audit proved that the vanilla decorative corpses are static scene geometry,
+    // therefore the Operational layer handles them visually without touching vanilla objects.
     public static bool CleanDecorativeRagdolls { get; set; } = true;
 
     // Keeps the operational-site look by preventing new blood decals during gameplay.
     public static bool BlockBloodDecals { get; set; } = true;
 
     // Generates a read-only report of the real generated room hierarchy before map cleanup.
-    // This lets the ProjectMER redesign use exact room-local coordinates instead of guesses.
-    public static bool AutomaticMapAudit { get; set; } = true;
+    public static bool AutomaticMapAudit { get; set; } = false;
+
+    // Non-destructive, fully reversible clean-facility overlay based on the v0.3 audit.
+    public static bool OperationalMapEnabled { get; set; } = true;
 
     internal static Dictionary<string, StaffSnapshot> StaffSnapshots { get; } = new(StringComparer.OrdinalIgnoreCase);
 
@@ -50,12 +53,13 @@ public sealed class SiteRpCorePlugin : Plugin
         if (PermanentRoundEnabled)
             Round.IsLocked = true;
 
-        LabLogger.Info("[SiteRP.Core] v0.3.0 active - RP permanent + SiteRP Clean + safe map survey enabled.");
+        LabLogger.Info("[SiteRP.Core] v0.4.0 active - RP permanent + SiteRP Operational map enabled.");
     }
 
     public override void Disable()
     {
         CustomHandlersManager.UnregisterEventsHandler(Events);
+        SiteRpOperationalMap.Remove();
 
         foreach (Player player in Player.ReadyList)
         {
@@ -84,7 +88,7 @@ public sealed class SiteRpCorePlugin : Plugin
                 ragdoll.Destroy();
         }
 
-        LabLogger.Info($"[SiteRP.Clean] {phase}: removed {ragdolls.Length} pre-existing ragdoll(s). Real player corpses spawned afterwards remain enabled.");
+        LabLogger.Info($"[SiteRP.Clean] {phase}: removed {ragdolls.Length} pre-existing network ragdoll(s). Static vanilla decorations are handled by SiteRP Operational.");
         return ragdolls.Length;
     }
 
