@@ -99,8 +99,36 @@ public sealed class SiteRpCommand : ICommand
                 response = $"Escapes vanilla: {(blockEscapes ? "BLOQUEES" : "AUTORISEES")}.";
                 return true;
 
+            case "clean":
+            case "cleanmap":
+                if (action is "run" or "apply")
+                {
+                    int removed = SiteRpCorePlugin.CleanupDecorativeRagdolls("manual clean");
+                    response = $"SiteRP Clean applique: {removed} ragdoll(s) retire(s). Attention: cette commande manuelle retire aussi les corps actuellement presents.";
+                    return true;
+                }
+                if (!TryOnOff(action, out bool cleanOn))
+                {
+                    response = "Usage: siterp clean on|off|run";
+                    return false;
+                }
+                SiteRpCorePlugin.CleanDecorativeRagdolls = cleanOn;
+                response = $"Nettoyage des corps decoratifs au chargement: {(cleanOn ? "ACTIVE" : "DESACTIVE")}.";
+                return true;
+
+            case "blood":
+            case "sang":
+                if (!TryBlockAllow(action, out bool blockBlood))
+                {
+                    response = "Usage: siterp blood block|allow";
+                    return false;
+                }
+                SiteRpCorePlugin.BlockBloodDecals = blockBlood;
+                response = $"Nouvelles traces de sang: {(blockBlood ? "BLOQUEES" : "AUTORISEES")}.";
+                return true;
+
             default:
-                response = "Commandes: siterp status | containment lock/unlock | round on/off | waves block/allow | decon block/allow | warhead block/allow | escapes block/allow";
+                response = "Commandes: siterp status | containment lock/unlock | round on/off | waves block/allow | decon block/allow | warhead block/allow | escapes block/allow | clean on/off/run | blood block/allow";
                 return false;
         }
     }
@@ -112,7 +140,9 @@ public sealed class SiteRpCommand : ICommand
         $"Vagues auto: {(SiteRpCorePlugin.BlockAutomaticWaves ? "BLOCK" : "ALLOW")}\n" +
         $"Decontamination: {(SiteRpCorePlugin.BlockDecontamination ? "BLOCK" : "ALLOW")}\n" +
         $"Ogive: {(SiteRpCorePlugin.BlockWarhead ? "BLOCK" : "ALLOW")}\n" +
-        $"Escapes: {(SiteRpCorePlugin.BlockEscapes ? "BLOCK" : "ALLOW")}";
+        $"Escapes: {(SiteRpCorePlugin.BlockEscapes ? "BLOCK" : "ALLOW")}\n" +
+        $"Corps decoratifs: {(SiteRpCorePlugin.CleanDecorativeRagdolls ? "CLEAN" : "VANILLA")}\n" +
+        $"Traces de sang: {(SiteRpCorePlugin.BlockBloodDecals ? "BLOCK" : "ALLOW")}";
 
     private static string Arg(ArraySegment<string> arguments, int index) =>
         arguments.Array![arguments.Offset + index];
