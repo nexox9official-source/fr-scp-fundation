@@ -127,8 +127,70 @@ public sealed class SiteRpCommand : ICommand
                 response = $"Nouvelles traces de sang: {(blockBlood ? "BLOQUEES" : "AUTORISEES")}.";
                 return true;
 
+            case "map":
+            case "mapping":
+                return HandleMap(arguments, player, action, out response);
+
             default:
-                response = "Commandes: siterp status | containment lock/unlock | round on/off | waves block/allow | decon block/allow | warhead block/allow | escapes block/allow | clean on/off/run | blood block/allow";
+                response = "Commandes: siterp status | containment lock/unlock | round on/off | waves block/allow | decon block/allow | warhead block/allow | escapes block/allow | clean on/off/run | blood block/allow | map audit/where/mark/report/targets/auto";
+                return false;
+        }
+    }
+
+    private static bool HandleMap(ArraySegment<string> arguments, Player? player, string action, out string response)
+    {
+        switch (action)
+        {
+            case "audit":
+            case "scan":
+                response = "Audit genere: " + SiteRpMapSurvey.WriteAudit();
+                return true;
+
+            case "where":
+            case "pos":
+            case "position":
+                if (player is null)
+                {
+                    response = "Cette sous-commande doit etre executee par un joueur en Remote Admin.";
+                    return false;
+                }
+                response = SiteRpMapSurvey.DescribePosition(player);
+                return true;
+
+            case "mark":
+            case "marker":
+                if (player is null)
+                {
+                    response = "Cette sous-commande doit etre executee par un joueur en Remote Admin.";
+                    return false;
+                }
+                string label = arguments.Count > 2 ? JoinFrom(arguments, 2) : "unnamed";
+                response = SiteRpMapSurvey.AppendMarker(player, label);
+                return true;
+
+            case "report":
+            case "last":
+                response = string.IsNullOrEmpty(SiteRpMapSurvey.LastReportPath)
+                    ? "Aucun rapport dans cette session. Utilise: siterp map audit"
+                    : "Dernier rapport: " + SiteRpMapSurvey.LastReportPath;
+                return true;
+
+            case "targets":
+                response = "Salles auditees en detail: " + SiteRpMapSurvey.TargetRoomNames;
+                return true;
+
+            case "auto":
+                if (arguments.Count < 3 || !TryOnOff(Arg(arguments, 2).ToLowerInvariant(), out bool auditOn))
+                {
+                    response = "Usage: siterp map auto on|off";
+                    return false;
+                }
+                SiteRpCorePlugin.AutomaticMapAudit = auditOn;
+                response = $"Audit automatique de la map: {(auditOn ? "ACTIVE" : "DESACTIVE")}.";
+                return true;
+
+            default:
+                response = "Usage: siterp map audit | map where | map mark <nom> | map report | map targets | map auto on/off";
                 return false;
         }
     }
@@ -142,10 +204,19 @@ public sealed class SiteRpCommand : ICommand
         $"Ogive: {(SiteRpCorePlugin.BlockWarhead ? "BLOCK" : "ALLOW")}\n" +
         $"Escapes: {(SiteRpCorePlugin.BlockEscapes ? "BLOCK" : "ALLOW")}\n" +
         $"Corps decoratifs: {(SiteRpCorePlugin.CleanDecorativeRagdolls ? "CLEAN" : "VANILLA")}\n" +
-        $"Traces de sang: {(SiteRpCorePlugin.BlockBloodDecals ? "BLOCK" : "ALLOW")}";
+        $"Traces de sang: {(SiteRpCorePlugin.BlockBloodDecals ? "BLOCK" : "ALLOW")}\n" +
+        $"Audit map automatique: {(SiteRpCorePlugin.AutomaticMapAudit ? "ON" : "OFF")}";
 
     private static string Arg(ArraySegment<string> arguments, int index) =>
         arguments.Array![arguments.Offset + index];
+
+    private static string JoinFrom(ArraySegment<string> arguments, int index)
+    {
+        if (arguments.Array is null || index >= arguments.Count)
+            return string.Empty;
+
+        return string.Join(" ", arguments.Array, arguments.Offset + index, arguments.Count - index);
+    }
 
     private static bool TryOnOff(string value, out bool enabled)
     {
