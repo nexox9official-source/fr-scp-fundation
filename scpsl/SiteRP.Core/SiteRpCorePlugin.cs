@@ -14,9 +14,9 @@ namespace SiteRP.Core;
 public sealed class SiteRpCorePlugin : Plugin
 {
     public override string Name => "SiteRP.Core";
-    public override string Description => "Persistent SCP:SL roleplay core: permanent round, containment controls, clean operational facility, Site-76-inspired facility blueprint, safe map survey and staff mode.";
+    public override string Description => "Persistent SCP:SL roleplay core: permanent round, containment controls, clean operational facility, RP jobs/UCR bridge, Site-76-inspired facility blueprint, safe map survey and staff mode.";
     public override string Author => "SiteRP";
-    public override Version Version => new(0, 5, 0);
+    public override Version Version => new(0, 6, 0);
     public override Version RequiredApiVersion { get; } = new(LabApiProperties.CompiledVersion);
 
     internal static SiteRpCorePlugin? Instance { get; private set; }
@@ -53,7 +53,7 @@ public sealed class SiteRpCorePlugin : Plugin
         if (PermanentRoundEnabled)
             Round.IsLocked = true;
 
-        LabLogger.Info("[SiteRP.Core] v0.5.0 active - RP permanent + Operational Facility blueprint inspired by Site-76.");
+        LabLogger.Info("[SiteRP.Core] v0.6.0 active - RP jobs/UCR bridge + STAFF role restore enabled.");
     }
 
     public override void Disable()
@@ -66,7 +66,7 @@ public sealed class SiteRpCorePlugin : Plugin
             if (!StaffSnapshots.TryGetValue(player.UserId, out StaffSnapshot snapshot))
                 continue;
 
-            player.SetRole(snapshot.OriginalRole);
+            RestoreRoleFromSnapshot(player, snapshot);
             RestoreStaffSnapshotImmediate(player, snapshot);
         }
 
@@ -106,6 +106,7 @@ public sealed class SiteRpCorePlugin : Plugin
         StaffSnapshot snapshot = new()
         {
             OriginalRole = player.Role,
+            OriginalCustomRoleId = SiteRpUcrBridge.GetCurrentRoleId(player),
             OriginalPosition = player.Position,
             OriginalGroupName = player.GroupName,
             OriginalGroupColor = player.GroupColor,
@@ -116,9 +117,15 @@ public sealed class SiteRpCorePlugin : Plugin
         };
 
         StaffSnapshots[player.UserId] = snapshot;
-        player.SetRole(RoleTypeId.Tutorial);
 
-        response = "Mode staff active.";
+        // Preferred path: the dedicated UCR STAFF role (1999) gives staff a distinct visual identity.
+        // Fallback keeps staff mode usable even if UCR is temporarily unavailable/misconfigured.
+        if (!SiteRpUcrBridge.TrySpawnRole(player, SiteRpUcrBridge.StaffRoleId))
+            player.SetRole(RoleTypeId.Tutorial);
+
+        response = snapshot.OriginalCustomRoleId.HasValue
+            ? $"Mode staff active. Role RP UCR {snapshot.OriginalCustomRoleId.Value} sauvegarde."
+            : "Mode staff active.";
         return true;
     }
 
@@ -131,9 +138,11 @@ public sealed class SiteRpCorePlugin : Plugin
         }
 
         snapshot.Restoring = true;
-        player.SetRole(snapshot.OriginalRole);
+        RestoreRoleFromSnapshot(player, snapshot);
 
-        response = "Mode staff desactive. Retour a ton role RP.";
+        response = snapshot.OriginalCustomRoleId.HasValue
+            ? $"Mode staff desactive. Retour au role RP UCR {snapshot.OriginalCustomRoleId.Value}."
+            : "Mode staff desactive. Retour a ton role RP.";
         return true;
     }
 
@@ -149,6 +158,7 @@ public sealed class SiteRpCorePlugin : Plugin
             return;
         }
 
+        // UCR STAFF is based on Tutorial; this also handles the non-UCR fallback path.
         if (player.Role == RoleTypeId.Tutorial)
             ApplyStaffAppearance(player, snapshot.OriginalPosition);
     }
@@ -157,11 +167,23 @@ public sealed class SiteRpCorePlugin : Plugin
     {
         player.GroupName = "STAFF";
         player.GroupColor = "red";
-        player.CustomInfo = "STAFF | MODERATION";
+        player.CustomInfo = "STAFF | HORS-RP | MODERATION";
         player.IsGodModeEnabled = true;
         player.IsNoclipEnabled = true;
         player.Position = position;
-        player.SendBroadcast("<b>MODE STAFF</b>\nTu es hors RP. Retape .staff pour revenir.", 6);
+        player.SendBroadcast("<b><color=red>MODE STAFF</color></b>\nTu es hors RP. Retape .staff pour revenir a ton metier.", 6);
+    }
+
+    private static void RestoreRoleFromSnapshot(Player player, StaffSnapshot snapshot)
+    {
+        if (snapshot.OriginalCustomRoleId.HasValue &&
+            SiteRpUcrBridge.TrySpawnRole(player, snapshot.OriginalCustomRoleId.Value))
+        {
+            return;
+        }
+
+        SiteRpUcrBridge.ClearCustomRole(player);
+        player.SetRole(snapshot.OriginalRole);
     }
 
     internal static void RestoreStaffSnapshotImmediate(Player player, StaffSnapshot snapshot)
@@ -184,6 +206,7 @@ public sealed class SiteRpCorePlugin : Plugin
 internal sealed class StaffSnapshot
 {
     public RoleTypeId OriginalRole { get; set; }
+    public int? OriginalCustomRoleId { get; set; }
     public Vector3 OriginalPosition { get; set; }
     public string OriginalGroupName { get; set; } = string.Empty;
     public string OriginalGroupColor { get; set; } = string.Empty;
