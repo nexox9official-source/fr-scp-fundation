@@ -104,7 +104,7 @@ public sealed class SiteRpCommand : ICommand
                 if (action is "run" or "apply")
                 {
                     int removed = SiteRpCorePlugin.CleanupDecorativeRagdolls("manual clean");
-                    response = $"SiteRP Clean applique: {removed} ragdoll(s) retire(s). Attention: cette commande manuelle retire aussi les corps actuellement presents.";
+                    response = $"SiteRP Clean applique: {removed} ragdoll(s) reseau retire(s).";
                     return true;
                 }
                 if (!TryOnOff(action, out bool cleanOn))
@@ -113,7 +113,7 @@ public sealed class SiteRpCommand : ICommand
                     return false;
                 }
                 SiteRpCorePlugin.CleanDecorativeRagdolls = cleanOn;
-                response = $"Nettoyage des corps decoratifs au chargement: {(cleanOn ? "ACTIVE" : "DESACTIVE")}.";
+                response = $"Nettoyage des ragdolls reseau au chargement: {(cleanOn ? "ACTIVE" : "DESACTIVE")}.";
                 return true;
 
             case "blood":
@@ -132,7 +132,7 @@ public sealed class SiteRpCommand : ICommand
                 return HandleMap(arguments, player, action, out response);
 
             default:
-                response = "Commandes: siterp status | containment lock/unlock | round on/off | waves block/allow | decon block/allow | warhead block/allow | escapes block/allow | clean on/off/run | blood block/allow | map audit/where/mark/report/targets/auto";
+                response = "Commandes: siterp status | containment lock/unlock | round on/off | waves block/allow | decon block/allow | warhead block/allow | escapes block/allow | clean on/off/run | blood block/allow | map operational/audit/where/mark/report/targets/auto";
                 return false;
         }
     }
@@ -141,6 +141,32 @@ public sealed class SiteRpCommand : ICommand
     {
         switch (action)
         {
+            case "operational":
+            case "op":
+                if (arguments.Count < 3)
+                {
+                    response = $"SiteRP Operational: {(SiteRpCorePlugin.OperationalMapEnabled ? "ON" : "OFF")} | applique={(SiteRpOperationalMap.IsApplied ? "OUI" : "NON")} | elements={SiteRpOperationalMap.SpawnedCount}\nUsage: siterp map operational on|off|reload";
+                    return true;
+                }
+
+                string opAction = Arg(arguments, 2).ToLowerInvariant();
+                if (opAction is "reload" or "reapply")
+                {
+                    SiteRpCorePlugin.OperationalMapEnabled = true;
+                    response = SiteRpOperationalMap.Reload();
+                    return true;
+                }
+
+                if (!TryOnOff(opAction, out bool operationalOn))
+                {
+                    response = "Usage: siterp map operational on|off|reload";
+                    return false;
+                }
+
+                SiteRpCorePlugin.OperationalMapEnabled = operationalOn;
+                response = operationalOn ? SiteRpOperationalMap.Apply() : SiteRpOperationalMap.Remove();
+                return true;
+
             case "audit":
             case "scan":
                 response = "Audit genere: " + SiteRpMapSurvey.WriteAudit();
@@ -190,7 +216,7 @@ public sealed class SiteRpCommand : ICommand
                 return true;
 
             default:
-                response = "Usage: siterp map audit | map where | map mark <nom> | map report | map targets | map auto on/off";
+                response = "Usage: siterp map operational on/off/reload | map audit | map where | map mark <nom> | map report | map targets | map auto on/off";
                 return false;
         }
     }
@@ -203,8 +229,9 @@ public sealed class SiteRpCommand : ICommand
         $"Decontamination: {(SiteRpCorePlugin.BlockDecontamination ? "BLOCK" : "ALLOW")}\n" +
         $"Ogive: {(SiteRpCorePlugin.BlockWarhead ? "BLOCK" : "ALLOW")}\n" +
         $"Escapes: {(SiteRpCorePlugin.BlockEscapes ? "BLOCK" : "ALLOW")}\n" +
-        $"Corps decoratifs: {(SiteRpCorePlugin.CleanDecorativeRagdolls ? "CLEAN" : "VANILLA")}\n" +
-        $"Traces de sang: {(SiteRpCorePlugin.BlockBloodDecals ? "BLOCK" : "ALLOW")}\n" +
+        $"Ragdolls reseau au chargement: {(SiteRpCorePlugin.CleanDecorativeRagdolls ? "CLEAN" : "VANILLA")}\n" +
+        $"Traces de sang nouvelles: {(SiteRpCorePlugin.BlockBloodDecals ? "BLOCK" : "ALLOW")}\n" +
+        $"SiteRP Operational: {(SiteRpCorePlugin.OperationalMapEnabled ? "ON" : "OFF")} / {(SiteRpOperationalMap.IsApplied ? "APPLIQUE" : "NON APPLIQUE")} ({SiteRpOperationalMap.SpawnedCount} elements)\n" +
         $"Audit map automatique: {(SiteRpCorePlugin.AutomaticMapAudit ? "ON" : "OFF")}";
 
     private static string Arg(ArraySegment<string> arguments, int index) =>
