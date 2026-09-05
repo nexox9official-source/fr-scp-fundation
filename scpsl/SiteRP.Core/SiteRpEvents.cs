@@ -10,12 +10,13 @@ internal sealed class SiteRpEvents : CustomEventsHandler
 {
     public override void OnServerMapGenerated(MapGeneratedEventArgs ev)
     {
-        // First capture the exact generated vanilla room hierarchy before we touch any
-        // decorative ragdoll. This is the basis for a non-destructive ProjectMER redesign.
         if (SiteRpCorePlugin.AutomaticMapAudit)
             SiteRpMapSurvey.WriteAudit(ev.Seed);
 
         SiteRpCorePlugin.CleanupDecorativeRagdolls($"map generated (seed {ev.Seed})");
+
+        if (SiteRpCorePlugin.OperationalMapEnabled)
+            SiteRpOperationalMap.Apply();
     }
 
     public override void OnServerRoundStarted()
@@ -23,8 +24,11 @@ internal sealed class SiteRpEvents : CustomEventsHandler
         if (SiteRpCorePlugin.PermanentRoundEnabled)
             Round.IsLocked = true;
 
-        // Second pass: some decorative ragdolls may be initialized after map generation.
         SiteRpCorePlugin.CleanupDecorativeRagdolls("round started");
+
+        // Safety retry in case an AdminToy prefab was not available during MapGenerated.
+        if (SiteRpCorePlugin.OperationalMapEnabled && !SiteRpOperationalMap.IsApplied)
+            SiteRpOperationalMap.Apply();
     }
 
     public override void OnServerRoundEnding(RoundEndingEventArgs ev)
