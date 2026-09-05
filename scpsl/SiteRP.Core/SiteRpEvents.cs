@@ -8,10 +8,18 @@ namespace SiteRP.Core;
 
 internal sealed class SiteRpEvents : CustomEventsHandler
 {
+    public override void OnServerMapGenerated(MapGeneratedEventArgs ev)
+    {
+        SiteRpCorePlugin.CleanupDecorativeRagdolls($"map generated (seed {ev.Seed})");
+    }
+
     public override void OnServerRoundStarted()
     {
         if (SiteRpCorePlugin.PermanentRoundEnabled)
             Round.IsLocked = true;
+
+        // Second pass: some decorative ragdolls may be initialized after map generation.
+        SiteRpCorePlugin.CleanupDecorativeRagdolls("round started");
     }
 
     public override void OnServerRoundEnding(RoundEndingEventArgs ev)
@@ -44,6 +52,12 @@ internal sealed class SiteRpEvents : CustomEventsHandler
     public override void OnPlayerEscaping(PlayerEscapingEventArgs ev)
     {
         if (SiteRpCorePlugin.BlockEscapes)
+            ev.IsAllowed = false;
+    }
+
+    public override void OnPlayerPlacingBlood(PlayerPlacingBloodEventArgs ev)
+    {
+        if (SiteRpCorePlugin.BlockBloodDecals)
             ev.IsAllowed = false;
     }
 
