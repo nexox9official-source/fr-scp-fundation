@@ -14,9 +14,9 @@ namespace SiteRP.Core;
 public sealed class SiteRpCorePlugin : Plugin
 {
     public override string Name => "SiteRP.Core";
-    public override string Description => "Persistent SCP:SL roleplay core: permanent round, containment controls, clean operational facility, RP jobs/UCR bridge, Site-76-inspired facility blueprint, safe map survey and staff mode.";
+    public override string Description => "Persistent SCP:SL DarkRP core: permanent round, per-SCP containment states, CASSIE/079 RP policy, operational facility, UCR jobs, staff mode and safe map tooling.";
     public override string Author => "SiteRP";
-    public override Version Version => new(0, 6, 0);
+    public override Version Version => new(1, 0, 0);
     public override Version RequiredApiVersion { get; } = new(LabApiProperties.CompiledVersion);
 
     internal static SiteRpCorePlugin? Instance { get; private set; }
@@ -38,16 +38,20 @@ public sealed class SiteRpCorePlugin : Plugin
     public override void Enable()
     {
         Instance = this;
+        SiteRpScpStateManager.Reset();
         CustomHandlersManager.RegisterEventsHandler(Events);
+        SiteRpScp079Policy.Register();
 
         if (PermanentRoundEnabled)
             Round.IsLocked = true;
 
-        LabLogger.Info("[SiteRP.Core] v0.6.0 active - RP jobs/UCR bridge + STAFF role restore enabled.");
+        LabLogger.Info("[SiteRP.Core] v1.0.0 active - persistent DarkRP + per-SCP states + C.A.S.S.I.E./079 policy + RP jobs + STAFF.");
+        LabLogger.Info("[SiteRP.SCP] Initial state: Site NORMAL; vanilla/custom SCP contained; C.A.S.S.I.E. cooperative.");
     }
 
     public override void Disable()
     {
+        SiteRpScp079Policy.Unregister();
         CustomHandlersManager.UnregisterEventsHandler(Events);
         SiteRpOperationalMap.Remove();
 
@@ -146,8 +150,6 @@ public sealed class SiteRpCorePlugin : Plugin
 
         if (snapshot.Restoring)
         {
-            // Do not remove the snapshot here: ExitStaffMode performs one final restore
-            // after UCR has completed its synchronous summon path.
             RestoreStaffSnapshotImmediate(player, snapshot);
             return;
         }
