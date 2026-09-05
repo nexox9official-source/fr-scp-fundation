@@ -14,9 +14,9 @@ namespace SiteRP.Core;
 public sealed class SiteRpCorePlugin : Plugin
 {
     public override string Name => "SiteRP.Core";
-    public override string Description => "Persistent SCP:SL roleplay core: permanent round, containment controls, clean operational facility, safe map survey and staff mode.";
+    public override string Description => "Persistent SCP:SL roleplay core: permanent round, containment controls, clean operational facility, Site-76-inspired facility blueprint, safe map survey and staff mode.";
     public override string Author => "SiteRP";
-    public override Version Version => new(0, 4, 0);
+    public override Version Version => new(0, 5, 0);
     public override Version RequiredApiVersion { get; } = new(LabApiProperties.CompiledVersion);
 
     internal static SiteRpCorePlugin? Instance { get; private set; }
@@ -37,7 +37,7 @@ public sealed class SiteRpCorePlugin : Plugin
     // Keeps the operational-site look by preventing new blood decals during gameplay.
     public static bool BlockBloodDecals { get; set; } = true;
 
-    // Generates a read-only report of the real generated room hierarchy before map cleanup.
+    // Generates the legacy focused map audit when explicitly enabled.
     public static bool AutomaticMapAudit { get; set; } = false;
 
     // Non-destructive, fully reversible clean-facility overlay based on the v0.3 audit.
@@ -53,7 +53,7 @@ public sealed class SiteRpCorePlugin : Plugin
         if (PermanentRoundEnabled)
             Round.IsLocked = true;
 
-        LabLogger.Info("[SiteRP.Core] v0.4.0 active - RP permanent + SiteRP Operational map enabled.");
+        LabLogger.Info("[SiteRP.Core] v0.5.0 active - RP permanent + Operational Facility blueprint inspired by Site-76.");
     }
 
     public override void Disable()
