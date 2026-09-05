@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using AdminToys;
 using LabApi.Features.Wrappers;
 using MapGeneration;
 using UnityEngine;
+using AdminToy = LabApi.Features.Wrappers.AdminToy;
+using PrimitiveObjectToy = LabApi.Features.Wrappers.PrimitiveObjectToy;
+using PrimitiveFlags = AdminToys.PrimitiveFlags;
 using LabLogger = LabApi.Features.Console.Logger;
 
 namespace SiteRP.Core;
@@ -111,9 +113,6 @@ internal static class SiteRpOperationalMap
         return Apply();
     }
 
-    // Two EzCollapsedTunnel rooms exist in the audited seed. The audit proves each is a true
-    // end-room with only one DoorPoint at local Z=7.5; we therefore do NOT pretend there is
-    // a route behind the rubble. A clean sealed maintenance bulkhead is placed in front of it.
     private static void BuildCollapsedTunnelSeal(Room room)
     {
         AddBox(room, new Vector3(0f, 1.70f, 3.42f), Vector3.zero, new Vector3(3.48f, 3.42f, 0.18f), Wall, true);
@@ -123,63 +122,39 @@ internal static class SiteRpOperationalMap
         AddBox(room, new Vector3(1.43f, 1.70f, 3.24f), Vector3.zero, new Vector3(0.12f, 2.55f, 0.06f), FoundationBlue, false);
     }
 
-    // The audit locates every static shelter corpse under Content/WorldRagdoll and shows the
-    // entire gore arrangement behind local Z~=1.56. The damaged ContDoor is at Z=2.864.
-    // This clean front bulkhead at Z=3.10 hides BOTH without touching the vanilla objects.
     private static void BuildEvacShelterFront(Room room)
     {
         AddBox(room, new Vector3(0f, 2.18f, 3.10f), Vector3.zero, new Vector3(6.20f, 4.36f, 0.18f), WallLight, true);
         AddBox(room, new Vector3(0f, 0.55f, 3.00f), Vector3.zero, new Vector3(6.02f, 0.62f, 0.08f), Dark, false);
         AddBox(room, new Vector3(0f, 3.35f, 2.99f), Vector3.zero, new Vector3(5.95f, 0.22f, 0.08f), FoundationBlue, false);
-
-        // Symmetrical waiting/medical benches in the clean entrance vestibule.
         AddBench(room, new Vector3(-2.52f, 0.36f, 5.15f), 0f);
         AddBench(room, new Vector3(2.52f, 0.36f, 5.15f), 0f);
-
-        // Compact equipment cabinets against the new bulkhead, away from the DoorPoint at Z=7.5.
         AddCabinet(room, new Vector3(-2.35f, 1.05f, 3.55f));
         AddCabinet(room, new Vector3(2.35f, 1.05f, 3.55f));
     }
 
-    // SCP-127 audit: the ripped guard and all associated blood are grouped around the left side
-    // of the main room (roughly X=-4.15..-0.38, Z=-2.29..2.42). We keep connectors untouched.
     private static void Build127Cleanup(Room room)
     {
-        // Very thin clean floor skin over the blood decals; it does not replace the room floor.
         AddBox(room, new Vector3(-2.55f, 0.035f, 0.05f), Vector3.zero, new Vector3(4.25f, 0.07f, 5.05f), Floor, true);
-
-        // Service cabinets conceal the static ripped-guard mesh while reading as normal lab storage.
         AddBox(room, new Vector3(-3.55f, 0.72f, 0.35f), Vector3.zero, new Vector3(1.25f, 1.45f, 2.70f), Wall, true);
         AddBox(room, new Vector3(-3.55f, 1.46f, 0.35f), Vector3.zero, new Vector3(1.27f, 0.08f, 2.72f), Dark, false);
         AddBox(room, new Vector3(-2.91f, 0.78f, 0.35f), Vector3.zero, new Vector3(0.05f, 1.15f, 2.45f), FoundationBlue, false);
     }
 
-    // SCP-049 is multi-level, so only audited, isolated lower/upper-lore zones are covered here.
-    // No corridor connector, elevator, pryable gate, SCP chamber or functional door is modified.
     private static void Build049Cleanup(Room room)
     {
-        // Repair skin around the broken epinephrine locker / nearby blood-footprint cluster.
         AddBox(room, new Vector3(-1.95f, 89.10f, -1.65f), Vector3.zero, new Vector3(1.45f, 0.10f, 1.55f), Floor, true);
         AddBox(room, new Vector3(-1.95f, 89.92f, -1.72f), Vector3.zero, new Vector3(1.25f, 1.55f, 0.62f), Wall, true);
         AddBox(room, new Vector3(-1.95f, 90.35f, -1.39f), Vector3.zero, new Vector3(0.95f, 0.16f, 0.05f), FoundationBlue, false);
-
-        // Guard scene at local (2.118, 89.086, 3.143): turn it into a sealed service console.
         AddBox(room, new Vector3(2.12f, 89.55f, 3.14f), Vector3.zero, new Vector3(1.55f, 1.02f, 2.35f), Wall, true);
         AddBox(room, new Vector3(2.12f, 90.10f, 3.14f), Vector3.zero, new Vector3(1.58f, 0.09f, 2.38f), Dark, false);
-
-        // The scientist at (18.705,93.481,12.84) is on a separate upper area. We deliberately
-        // use a compact equipment bank instead of a broad wall/floor cover there.
         AddBox(room, new Vector3(18.70f, 94.05f, 12.84f), Vector3.zero, new Vector3(2.10f, 1.25f, 1.25f), Wall, true);
         AddBox(room, new Vector3(18.70f, 94.72f, 12.84f), Vector3.zero, new Vector3(2.12f, 0.09f, 1.27f), FoundationBlue, false);
     }
 
-    // Warhead silo: only the audited blood cluster is covered. Concrete wear, cracks and leaks
-    // are intentionally left alone so the industrial room does not become unnaturally sterile.
     private static void BuildWarheadCleanup(Room room)
     {
         AddBox(room, new Vector3(32.55f, -70.37f, -9.00f), Vector3.zero, new Vector3(3.35f, 0.06f, 2.15f), Floor, true);
-
-        // Wall panel over the isolated GodMissing blood decal around (25.365,-69.226,-7.923).
         AddBox(room, new Vector3(25.36f, -69.23f, -7.87f), Vector3.zero, new Vector3(1.85f, 1.55f, 0.08f), Wall, false);
         AddBox(room, new Vector3(25.36f, -68.75f, -7.82f), Vector3.zero, new Vector3(1.55f, 0.13f, 0.05f), FoundationBlue, false);
     }
@@ -197,13 +172,7 @@ internal static class SiteRpOperationalMap
         AddBox(room, localPosition + new Vector3(0f, -0.35f, 0.35f), Vector3.zero, new Vector3(0.54f, 0.08f, 0.04f), Dark, false);
     }
 
-    private static PrimitiveObjectToy AddBox(
-        Room room,
-        Vector3 localPosition,
-        Vector3 localRotation,
-        Vector3 scale,
-        Color color,
-        bool collidable)
+    private static PrimitiveObjectToy AddBox(Room room, Vector3 localPosition, Vector3 localRotation, Vector3 scale, Color color, bool collidable)
     {
         Vector3 worldPosition = room.Transform.TransformPoint(localPosition);
         Quaternion worldRotation = room.Rotation * Quaternion.Euler(localRotation);
@@ -211,9 +180,7 @@ internal static class SiteRpOperationalMap
         PrimitiveObjectToy toy = PrimitiveObjectToy.Create(worldPosition, worldRotation, scale, null, false);
         toy.Type = PrimitiveType.Cube;
         toy.Color = color;
-        toy.Flags = collidable
-            ? PrimitiveFlags.Visible | PrimitiveFlags.Collidable
-            : PrimitiveFlags.Visible;
+        toy.Flags = collidable ? PrimitiveFlags.Visible | PrimitiveFlags.Collidable : PrimitiveFlags.Visible;
         toy.IsStatic = true;
         toy.Spawn();
         Spawned.Add(toy);
