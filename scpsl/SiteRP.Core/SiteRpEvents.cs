@@ -10,6 +10,11 @@ internal sealed class SiteRpEvents : CustomEventsHandler
 {
     public override void OnServerMapGenerated(MapGeneratedEventArgs ev)
     {
+        // First capture the exact generated vanilla room hierarchy before we touch any
+        // decorative ragdoll. This is the basis for a non-destructive ProjectMER redesign.
+        if (SiteRpCorePlugin.AutomaticMapAudit)
+            SiteRpMapSurvey.WriteAudit(ev.Seed);
+
         SiteRpCorePlugin.CleanupDecorativeRagdolls($"map generated (seed {ev.Seed})");
     }
 
