@@ -23,37 +23,63 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup .NET SDK
+      - name: Setup .NET SDKs
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: |
+            8.0.x
+            9.0.x
 
-      - name: Download SCP SL dedicated server references
+      - name: Download SCP SL managed references
         shell: pwsh
         run: |
-          Invoke-WebRequest -Uri "https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip" -OutFile "$env:RUNNER_TEMP\steamcmd.zip"
-          Expand-Archive "$env:RUNNER_TEMP\steamcmd.zip" -DestinationPath "$env:RUNNER_TEMP\steamcmd" -Force
+          $builder = "$env:RUNNER_TEMP\SecretLabDependenciesBuilder"
+          git clone --depth 1 https://github.com/Jesus-QC/SecretLabDependenciesBuilder.git $builder
+          if ($LASTEXITCODE -ne 0) { throw "Unable to clone SecretLabDependenciesBuilder." }
 
-          & "$env:RUNNER_TEMP\steamcmd\steamcmd.exe" +quit
-          if ($LASTEXITCODE -ne 0) { Write-Host "SteamCMD updater returned $LASTEXITCODE; continuing with updated client." }
+          @"
+          AssembliesToPublicize:
+          - Assembly-CSharp.dll
+          - Mirror.dll
+          ZipReferences: false
+          ReferencesZipName: References.zip
+          SaveReferencesToFolder: true
+          ReferencesFolderName: References
+          "@ | Set-Content -Path "$builder\config.yml" -Encoding utf8
 
-          # Current public Windows depot for SCP:SL Dedicated Server (App 996560 / Depot 996561).
-          & "$env:RUNNER_TEMP\steamcmd\steamcmd.exe" +login anonymous +download_depot 996560 996561 64315380234631006 +quit
-          if ($LASTEXITCODE -ne 0) { throw "SCP SL depot download failed with exit code $LASTEXITCODE" }
+          Push-Location $builder
+          try {
+            # Input 1: no beta branch. Input 2: confirm defaults.
+            "`n`n" | dotnet run --project .\SecretLabDependenciesBuilder\SecretLabDependenciesBuilder.csproj -c Release
+            if ($LASTEXITCODE -ne 0) { throw "SecretLabDependenciesBuilder failed with exit code $LASTEXITCODE" }
+          }
+          finally {
+            Pop-Location
+          }
 
-          $managedDir = Get-ChildItem "$env:RUNNER_TEMP\steamcmd" -Directory -Recurse -Filter Managed |
-              Where-Object { Test-Path (Join-Path $_.FullName 'Assembly-CSharp.dll') } |
-              Select-Object -First 1
-          if ($null -eq $managedDir) { throw "Could not find SCPSL_Data/Managed in downloaded depot." }
+          $refs = "$builder\References"
+          if (!(Test-Path "$refs\Assembly-CSharp.dll")) { throw "Assembly-CSharp.dll missing from downloaded references." }
+          if (!(Test-Path "$refs\LabAPI.dll")) { throw "LabAPI.dll missing from downloaded references." }
 
-          "SL_MANAGED=$($managedDir.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          Write-Host "Using SCP SL references from $($managedDir.FullName)"
+          "SL_MANAGED=$refs" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "Using SCP SL references from $refs"
 
       - name: Verify server references
         shell: pwsh
         run: |
-          if (!(Test-Path "$env:SL_MANAGED\LabAPI.dll")) { throw "LabAPI.dll not found in $env:SL_MANAGED" }
-          if (!(Test-Path "$env:SL_MANAGED\Assembly-CSharp.dll")) { throw "Assembly-CSharp.dll not found in $env:SL_MANAGED" }
+          $required = @(
+            'LabAPI.dll',
+            'Assembly-CSharp.dll',
+            'Assembly-CSharp-firstpass.dll',
+            'CommandSystem.Core.dll',
+            'Mirror.dll',
+            'NorthwoodLib.dll',
+            'Pooling.dll',
+            'UnityEngine.CoreModule.dll'
+          )
+          foreach ($dll in $required) {
+            if (!(Test-Path (Join-Path $env:SL_MANAGED $dll))) { throw "$dll not found in $env:SL_MANAGED" }
+          }
 
       - name: Build SiteRP.Core
         shell: pwsh
