@@ -47,8 +47,11 @@ public sealed class SiteRpCorePlugin : Plugin
 
         foreach (Player player in Player.ReadyList)
         {
-            if (StaffSnapshots.TryGetValue(player.UserId, out StaffSnapshot snapshot))
-                RestoreStaffSnapshotImmediate(player, snapshot);
+            if (!StaffSnapshots.TryGetValue(player.UserId, out StaffSnapshot snapshot))
+                continue;
+
+            player.SetRole(snapshot.OriginalRole);
+            RestoreStaffSnapshotImmediate(player, snapshot);
         }
 
         StaffSnapshots.Clear();
@@ -148,13 +151,13 @@ public sealed class SiteRpCorePlugin : Plugin
 
 internal sealed class StaffSnapshot
 {
-    public RoleTypeId OriginalRole { get; init; }
-    public Vector3 OriginalPosition { get; init; }
-    public string OriginalGroupName { get; init; } = string.Empty;
-    public string OriginalGroupColor { get; init; } = string.Empty;
-    public string OriginalCustomInfo { get; init; } = string.Empty;
-    public string OriginalDisplayName { get; init; } = string.Empty;
-    public bool OriginalGodMode { get; init; }
-    public bool OriginalNoclip { get; init; }
+    public RoleTypeId OriginalRole { get; set; }
+    public Vector3 OriginalPosition { get; set; }
+    public string OriginalGroupName { get; set; } = string.Empty;
+    public string OriginalGroupColor { get; set; } = string.Empty;
+    public string OriginalCustomInfo { get; set; } = string.Empty;
+    public string OriginalDisplayName { get; set; } = string.Empty;
+    public bool OriginalGodMode { get; set; }
+    public bool OriginalNoclip { get; set; }
     public bool Restoring { get; set; }
 }
