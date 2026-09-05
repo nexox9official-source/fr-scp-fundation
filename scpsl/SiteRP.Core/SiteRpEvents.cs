@@ -75,8 +75,18 @@ internal sealed class SiteRpEvents : CustomEventsHandler
         if (!SiteRpCorePlugin.ContainmentLocked || !ev.Player.IsSCP)
             return;
 
+        string? scpId = SiteRpScpStateManager.GetScpId(ev.Player.Role);
+        if (scpId is not null && SiteRpScpStateManager.CanLeaveContainment(scpId))
+            return;
+
         ev.IsAllowed = false;
-        ev.Player.SendBroadcast("<b>CONFINEMENT ACTIF</b>\nCette porte ne peut pas etre ouverte par un SCP.", 3);
+        string state = scpId is null
+            ? "CONTAINED"
+            : SiteRpScpStateManager.Get(scpId).ToString().ToUpperInvariant();
+
+        ev.Player.SendBroadcast(
+            $"<b>CONFINEMENT ACTIF</b>\nEtat SCP: {state}. Porte verrouillee par SiteRP.",
+            3);
     }
 
     public override void OnPlayerChangedRole(PlayerChangedRoleEventArgs ev)
