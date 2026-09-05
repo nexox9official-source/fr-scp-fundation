@@ -28,33 +28,37 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Install SteamCMD and SCP SL dedicated server
+      - name: Download SCP SL dedicated server references
         shell: pwsh
         run: |
           Invoke-WebRequest -Uri "https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip" -OutFile "$env:RUNNER_TEMP\steamcmd.zip"
           Expand-Archive "$env:RUNNER_TEMP\steamcmd.zip" -DestinationPath "$env:RUNNER_TEMP\steamcmd" -Force
-          New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\scpsl_server" | Out-Null
 
-          # First launch lets SteamCMD update itself before the real install command.
           & "$env:RUNNER_TEMP\steamcmd\steamcmd.exe" +quit
           if ($LASTEXITCODE -ne 0) { Write-Host "SteamCMD updater returned $LASTEXITCODE; continuing with updated client." }
 
-          & "$env:RUNNER_TEMP\steamcmd\steamcmd.exe" +force_install_dir "$env:GITHUB_WORKSPACE\scpsl_server" +login anonymous +app_update 996560 validate +quit
-          if ($LASTEXITCODE -ne 0) { throw "SCP SL server install failed with exit code $LASTEXITCODE" }
+          # Current public Windows depot for SCP:SL Dedicated Server (App 996560 / Depot 996561).
+          & "$env:RUNNER_TEMP\steamcmd\steamcmd.exe" +login anonymous +download_depot 996560 996561 64315380234631006 +quit
+          if ($LASTEXITCODE -ne 0) { throw "SCP SL depot download failed with exit code $LASTEXITCODE" }
+
+          $managedDir = Get-ChildItem "$env:RUNNER_TEMP\steamcmd" -Directory -Recurse -Filter Managed |
+              Where-Object { Test-Path (Join-Path $_.FullName 'Assembly-CSharp.dll') } |
+              Select-Object -First 1
+          if ($null -eq $managedDir) { throw "Could not find SCPSL_Data/Managed in downloaded depot." }
+
+          "SL_MANAGED=$($managedDir.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "Using SCP SL references from $($managedDir.FullName)"
 
       - name: Verify server references
         shell: pwsh
         run: |
-          $managed = "$env:GITHUB_WORKSPACE\scpsl_server\SCPSL_Data\Managed"
-          if (!(Test-Path "$managed\LabAPI.dll")) { throw "LabAPI.dll not found in $managed" }
-          if (!(Test-Path "$managed\Assembly-CSharp.dll")) { throw "Assembly-CSharp.dll not found in $managed" }
-          Write-Host "Using SCP SL references from $managed"
+          if (!(Test-Path "$env:SL_MANAGED\LabAPI.dll")) { throw "LabAPI.dll not found in $env:SL_MANAGED" }
+          if (!(Test-Path "$env:SL_MANAGED\Assembly-CSharp.dll")) { throw "Assembly-CSharp.dll not found in $env:SL_MANAGED" }
 
       - name: Build SiteRP.Core
         shell: pwsh
         run: |
-          $managed = "$env:GITHUB_WORKSPACE\scpsl_server\SCPSL_Data\Managed"
-          dotnet build "$env:GITHUB_WORKSPACE\scpsl\SiteRP.Core\SiteRP.Core.csproj" -c Release -p:SL_REFERENCES="$managed"
+          dotnet build "$env:GITHUB_WORKSPACE\scpsl\SiteRP.Core\SiteRP.Core.csproj" -c Release -p:SL_REFERENCES="$env:SL_MANAGED"
 
       - name: Upload DLL
         uses: actions/upload-artifact@v4
