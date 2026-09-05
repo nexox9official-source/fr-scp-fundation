@@ -135,7 +135,8 @@ internal static class SiteRpOperationalMap
 
     private static void Build127Cleanup(Room room)
     {
-        AddBox(room, new Vector3(-2.55f, 0.035f, 0.05f), Vector3.zero, new Vector3(4.25f, 0.07f, 5.05f), Floor, true);
+        // Visual floor skin only: no collision, so the vanilla Audio Log and interactions remain usable.
+        AddBox(room, new Vector3(-2.55f, 0.035f, 0.05f), Vector3.zero, new Vector3(4.25f, 0.07f, 5.05f), Floor, false);
         AddBox(room, new Vector3(-3.55f, 0.72f, 0.35f), Vector3.zero, new Vector3(1.25f, 1.45f, 2.70f), Wall, true);
         AddBox(room, new Vector3(-3.55f, 1.46f, 0.35f), Vector3.zero, new Vector3(1.27f, 0.08f, 2.72f), Dark, false);
         AddBox(room, new Vector3(-2.91f, 0.78f, 0.35f), Vector3.zero, new Vector3(0.05f, 1.15f, 2.45f), FoundationBlue, false);
@@ -143,7 +144,7 @@ internal static class SiteRpOperationalMap
 
     private static void Build049Cleanup(Room room)
     {
-        AddBox(room, new Vector3(-1.95f, 89.10f, -1.65f), Vector3.zero, new Vector3(1.45f, 0.10f, 1.55f), Floor, true);
+        AddBox(room, new Vector3(-1.95f, 89.10f, -1.65f), Vector3.zero, new Vector3(1.45f, 0.10f, 1.55f), Floor, false);
         AddBox(room, new Vector3(-1.95f, 89.92f, -1.72f), Vector3.zero, new Vector3(1.25f, 1.55f, 0.62f), Wall, true);
         AddBox(room, new Vector3(-1.95f, 90.35f, -1.39f), Vector3.zero, new Vector3(0.95f, 0.16f, 0.05f), FoundationBlue, false);
         AddBox(room, new Vector3(2.12f, 89.55f, 3.14f), Vector3.zero, new Vector3(1.55f, 1.02f, 2.35f), Wall, true);
@@ -154,7 +155,7 @@ internal static class SiteRpOperationalMap
 
     private static void BuildWarheadCleanup(Room room)
     {
-        AddBox(room, new Vector3(32.55f, -70.37f, -9.00f), Vector3.zero, new Vector3(3.35f, 0.06f, 2.15f), Floor, true);
+        AddBox(room, new Vector3(32.55f, -70.37f, -9.00f), Vector3.zero, new Vector3(3.35f, 0.06f, 2.15f), Floor, false);
         AddBox(room, new Vector3(25.36f, -69.23f, -7.87f), Vector3.zero, new Vector3(1.85f, 1.55f, 0.08f), Wall, false);
         AddBox(room, new Vector3(25.36f, -68.75f, -7.82f), Vector3.zero, new Vector3(1.55f, 0.13f, 0.05f), FoundationBlue, false);
     }
