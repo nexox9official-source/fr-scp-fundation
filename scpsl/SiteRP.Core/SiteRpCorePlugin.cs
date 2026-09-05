@@ -28,19 +28,9 @@ public sealed class SiteRpCorePlugin : Plugin
     public static bool BlockDecontamination { get; set; } = true;
     public static bool BlockWarhead { get; set; } = true;
     public static bool BlockEscapes { get; set; } = true;
-
-    // SiteRP Clean: removes network ragdolls already present when the facility is generated.
-    // The v0.3 audit proved that the vanilla decorative corpses are static scene geometry,
-    // therefore the Operational layer handles them visually without touching vanilla objects.
     public static bool CleanDecorativeRagdolls { get; set; } = true;
-
-    // Keeps the operational-site look by preventing new blood decals during gameplay.
     public static bool BlockBloodDecals { get; set; } = true;
-
-    // Generates the legacy focused map audit when explicitly enabled.
     public static bool AutomaticMapAudit { get; set; } = false;
-
-    // Non-destructive, fully reversible clean-facility overlay based on the v0.3 audit.
     public static bool OperationalMapEnabled { get; set; } = true;
 
     internal static Dictionary<string, StaffSnapshot> StaffSnapshots { get; } = new(StringComparer.OrdinalIgnoreCase);
@@ -118,8 +108,6 @@ public sealed class SiteRpCorePlugin : Plugin
 
         StaffSnapshots[player.UserId] = snapshot;
 
-        // Preferred path: the dedicated UCR STAFF role (1999) gives staff a distinct visual identity.
-        // Fallback keeps staff mode usable even if UCR is temporarily unavailable/misconfigured.
         if (!SiteRpUcrBridge.TrySpawnRole(player, SiteRpUcrBridge.StaffRoleId))
             player.SetRole(RoleTypeId.Tutorial);
 
@@ -140,6 +128,11 @@ public sealed class SiteRpCorePlugin : Plugin
         snapshot.Restoring = true;
         RestoreRoleFromSnapshot(player, snapshot);
 
+        // UCR KeepCurrentPositionSpawn finishes after the role-change event. Re-apply the
+        // stored RP position and moderation state once the UCR summon call has returned.
+        RestoreStaffSnapshotImmediate(player, snapshot);
+        StaffSnapshots.Remove(player.UserId);
+
         response = snapshot.OriginalCustomRoleId.HasValue
             ? $"Mode staff desactive. Retour au role RP UCR {snapshot.OriginalCustomRoleId.Value}."
             : "Mode staff desactive. Retour a ton role RP.";
@@ -153,12 +146,12 @@ public sealed class SiteRpCorePlugin : Plugin
 
         if (snapshot.Restoring)
         {
+            // Do not remove the snapshot here: ExitStaffMode performs one final restore
+            // after UCR has completed its synchronous summon path.
             RestoreStaffSnapshotImmediate(player, snapshot);
-            StaffSnapshots.Remove(player.UserId);
             return;
         }
 
-        // UCR STAFF is based on Tutorial; this also handles the non-UCR fallback path.
         if (player.Role == RoleTypeId.Tutorial)
             ApplyStaffAppearance(player, snapshot.OriginalPosition);
     }
@@ -188,10 +181,16 @@ public sealed class SiteRpCorePlugin : Plugin
 
     internal static void RestoreStaffSnapshotImmediate(Player player, StaffSnapshot snapshot)
     {
-        player.GroupName = snapshot.OriginalGroupName;
-        player.GroupColor = snapshot.OriginalGroupColor;
-        player.CustomInfo = snapshot.OriginalCustomInfo;
-        player.DisplayName = snapshot.OriginalDisplayName;
+        // When UCR restored a custom job, let UCR own the badge/name/custom-info again.
+        // For a vanilla job, restore the exact values that existed before staff mode.
+        if (!snapshot.OriginalCustomRoleId.HasValue)
+        {
+            player.GroupName = snapshot.OriginalGroupName;
+            player.GroupColor = snapshot.OriginalGroupColor;
+            player.CustomInfo = snapshot.OriginalCustomInfo;
+            player.DisplayName = snapshot.OriginalDisplayName;
+        }
+
         player.IsGodModeEnabled = snapshot.OriginalGodMode;
         player.IsNoclipEnabled = snapshot.OriginalNoclip;
         player.Position = snapshot.OriginalPosition;
