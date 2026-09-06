@@ -4,14 +4,14 @@ using PlayerRoles;
 namespace SiteRP.Core.Jobs;
 
 /// <summary>
-/// Arrival/deployment state. The actual interactive UI is the native SCP:SL
-/// Server-Specific Settings screen managed by JobMenuManager.
+/// Arrival/deployment state. The primary jobs interface is now an in-game hint HUD.
+/// Native SCP:SL Server-Specific Settings remain available as a mouse/admin fallback.
 /// </summary>
 public static class SiteRpInteractiveUi
 {
     private static readonly HashSet<string> DeployedPlayers = new(StringComparer.OrdinalIgnoreCase);
 
-    public static bool IsOpen(Player player) => false;
+    public static bool IsOpen(Player player) => JobHudManager.IsOpen(player);
 
     public static bool IsDeployed(Player player)
     {
@@ -29,6 +29,7 @@ public static class SiteRpInteractiveUi
         string id = JobRuntime.GetPersistentUserId(player);
         DeployedPlayers.Remove(id);
         JobMenuManager.CleanupPlayer(player);
+        JobHudManager.Cleanup(player);
         SiteRpUcrBridge.ClearCustomRole(player);
         player.SetRole(RoleTypeId.Tutorial);
         player.IsGodModeEnabled = true;
@@ -43,16 +44,19 @@ public static class SiteRpInteractiveUi
 
             player.ClearInventory();
             if (SiteRpRulesRepository.HasAccepted(player))
-                JobMenuManager.ShowJobs(player);
+            {
+                JobHudManager.Open(player, "Choisis ton département puis ton métier.");
+            }
             else
+            {
                 JobMenuManager.ShowRules(player);
-
-            player.SendHint(
-                "<align=center><size=30><color=#62A8FF><b>SITERP — ENREGISTREMENT</b></color></size>\n" +
-                "<size=20>Ouvre le menu <b>M</b> puis <b>Server Specific Settings</b>.</size>\n" +
-                "<size=17>Règlement obligatoire → choix du métier → déploiement.</size>\n" +
-                "<size=15><color=#B9C7D8>La radio fonctionne normalement et n'est plus utilisée par l'interface.</color></size></align>",
-                15f);
+                player.SendHint(
+                    "<align=center><size=30><color=#62A8FF><b>SITERP — ENREGISTREMENT</b></color></size>\n" +
+                    "<size=19>Le règlement doit être accepté une fois avant le déploiement.</size>\n" +
+                    "<size=16>Ouvre <b>M → Server Specific Settings → REGLEMENT</b>.</size>\n" +
+                    "<size=16>Ensuite le choix du métier se fera directement en HUD avec <b>.jobs</b>.</size></align>",
+                    15f);
+            }
         });
     }
 
@@ -65,8 +69,22 @@ public static class SiteRpInteractiveUi
             OpenRules(player, false);
             return;
         }
+
+        JobHudManager.Open(player);
+    }
+
+    public static void OpenNativeJobs(Player player)
+    {
+        if (player is null || !player.IsReady)
+            return;
+        if (!SiteRpRulesRepository.HasAccepted(player))
+        {
+            OpenRules(player, false);
+            return;
+        }
+
         JobMenuManager.ShowJobs(player);
-        PromptM(player, "La page MÉTIERS est prête.");
+        PromptM(player, "Fallback natif MÉTIERS prêt.");
     }
 
     public static void OpenRules(Player player, bool reviewOnly = true)
@@ -79,7 +97,7 @@ public static class SiteRpInteractiveUi
 
     public static void HandleMenuKey(Player player) => OpenJobs(player);
 
-    // Kept only for binary/source compatibility with older commands. Radio events no longer call these.
+    // Kept for binary/source compatibility with older builds. Radio is never hijacked.
     public static bool HandleRadioNext(Player player) => false;
     public static bool HandleRadioConfirm(Player player) => false;
 
@@ -91,8 +109,9 @@ public static class SiteRpInteractiveUi
         player.IsGodModeEnabled = false;
         player.SendHint(
             "<align=center><size=28><color=#73D673><b>DÉPLOIEMENT AUTORISÉ</b></color></size>\n" +
-            "<size=18>Bienvenue sur le Site. Les métiers restent accessibles depuis <b>M</b>.</size></align>",
-            6f);
+            "<size=18>Bienvenue sur le Site.</size>\n" +
+            "<size=16>Le menu métiers reste accessible à tout moment avec <b>.jobs</b>.</size></align>",
+            7f);
     }
 
     public static void CleanupPlayer(Player player)
@@ -100,12 +119,13 @@ public static class SiteRpInteractiveUi
         if (player is null)
             return;
         DeployedPlayers.Remove(JobRuntime.GetPersistentUserId(player));
+        JobHudManager.Cleanup(player);
         JobMenuManager.CleanupPlayer(player);
     }
 
     public static void Close(Player player)
     {
-        // The native M interface is opened/closed by the SCP:SL client itself.
+        JobHudManager.Close(player);
     }
 
     private static void PromptM(Player player, string line)
