@@ -37,11 +37,9 @@ public static class JobMenuManager
         if (_categories.Length == 0)
             _categories = new[] { "AUCUN METIER" };
 
-        string[] allJobOptions = _menuJobs.Select(FormatOption).ToArray();
-        if (allJobOptions.Length == 0)
-            allJobOptions = new[] { "Aucun metier configure" };
-
-        _ownedSettings = CreateMenuSettings(0, allJobOptions);
+        // Show only the first selected category immediately. Older builds displayed all
+        // 100+ roles on the first opening and only became filtered after changing category.
+        _ownedSettings = CreateMenuSettings(0);
 
         ServerSpecificSettingBase[] existing = ServerSpecificSettingsSync.DefinedSettings ?? Array.Empty<ServerSpecificSettingBase>();
         _foreignSettings = existing
@@ -93,12 +91,11 @@ public static class JobMenuManager
             .ToArray();
     }
 
-    private static ServerSpecificSettingBase[] CreateMenuSettings(int categoryIndex, string[]? forcedJobOptions = null)
+    private static ServerSpecificSettingBase[] CreateMenuSettings(int categoryIndex)
     {
         categoryIndex = Math.Max(0, Math.Min(categoryIndex, _categories.Length - 1));
-        string category = _categories[categoryIndex];
         JobDefinition[] jobs = GetJobsForCategory(categoryIndex);
-        string[] jobOptions = forcedJobOptions ?? jobs.Select(FormatJobOnly).ToArray();
+        string[] jobOptions = jobs.Select(FormatJobOnly).ToArray();
         if (jobOptions.Length == 0)
             jobOptions = new[] { "Aucun metier dans cette categorie" };
 
@@ -112,7 +109,6 @@ public static class JobMenuManager
         };
     }
 
-    private static string FormatOption(JobDefinition job) => $"[{AccessLabel(job)}] [{job.Category}] {job.Name}";
     private static string FormatJobOnly(JobDefinition job) => $"[{AccessLabel(job)}] {job.Name}";
 
     private static string AccessLabel(JobDefinition job) => job.AccessMode switch
