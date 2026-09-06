@@ -13,19 +13,40 @@ public sealed class SiteRpJobCommand : ICommand
 {
     public string Command => "siterpjob";
     public string[] Aliases => new[] { "srjob", "jobsrp", "job", "jobs", "metier", "metiers" };
-    public string Description => "SiteRP Jobs: rejoindre un metier et gerer les whitelists persistantes.";
+    public string Description => "SiteRP Jobs: ouvrir l'interface, rejoindre un metier et gerer les whitelists persistantes.";
 
     public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
     {
         string[] args = arguments.ToArray();
+        Player? actor = Player.Get(sender);
+
         if (args.Length == 0)
         {
-            response = Help();
+            if (actor is null)
+            {
+                response = Help();
+                return true;
+            }
+
+            SiteRpInteractiveUi.OpenJobs(actor);
+            response = "Interface SiteRP ouverte. PORTÉE radio = suivant, ON/OFF = valider, J = retour.";
             return true;
         }
 
-        Player? actor = Player.Get(sender);
         string action = args[0].ToLowerInvariant();
+
+        if (action == "menu" || action == "open" || action == "ouvrir")
+        {
+            if (actor is null)
+            {
+                response = "Cette commande doit etre executee par un joueur.";
+                return false;
+            }
+
+            SiteRpInteractiveUi.OpenJobs(actor);
+            response = "Interface SiteRP ouverte.";
+            return true;
+        }
 
         if (action == "join")
         {
@@ -35,13 +56,24 @@ public sealed class SiteRpJobCommand : ICommand
                 return false;
             }
 
+            if (!SiteRpRulesRepository.HasAccepted(actor))
+            {
+                SiteRpInteractiveUi.OpenRules(actor, false);
+                response = "Accepte d'abord le reglement SiteRP.";
+                return false;
+            }
+
             if (args.Length < 2 || !int.TryParse(args[1], out int roleId))
             {
                 response = "Usage: jobs join <roleId>";
                 return false;
             }
 
-            return JobRuntime.TryJoin(actor, roleId, out response);
+            bool initial = !SiteRpInteractiveUi.IsDeployed(actor);
+            bool result = JobRuntime.TryJoin(actor, roleId, out response, initial);
+            if (result && initial)
+                SiteRpInteractiveUi.MarkDeployed(actor);
+            return result;
         }
 
         if (action == "list")
@@ -68,7 +100,7 @@ public sealed class SiteRpJobCommand : ICommand
         {
             JobWhitelistRepository.Load();
             JobMenuManager.Refresh();
-            response = "SiteRP Jobs recharge : whitelist + selecteur Server-Specific actualises.";
+            response = "SiteRP recharge : roles, whitelists, regles et raccourci interface actualises.";
             return true;
         }
 
@@ -206,7 +238,9 @@ public sealed class SiteRpJobCommand : ICommand
     }
 
     private static string Help() =>
-        "SiteRP Jobs (interface: Echap > Parametres > Server-Specific):\n" +
+        "SiteRP Jobs (interface en jeu):\n" +
+        "jobs / jobs menu = ouvrir l'interface\n" +
+        "Navigation: PORTÉE radio = suivant, ON/OFF = valider, J = retour\n" +
         "jobs list\n" +
         "jobs join <roleId>\n" +
         "jobs whitelist add <playerId|steamId64> <roleId>\n" +
@@ -216,5 +250,5 @@ public sealed class SiteRpJobCommand : ICommand
         "jobs reload";
 
     private static string WhitelistHelp() =>
-        "Whitelist SiteRP: add, remove, player, role. Les changements sont sauvegardes immediatement.";
+        "Whitelist SiteRP: gestion directement dans le menu staff ou commandes add, remove, player, role. Sauvegarde immediate.";
 }
