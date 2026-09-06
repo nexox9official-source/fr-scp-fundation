@@ -103,7 +103,7 @@ internal sealed class SiteRpEvents : CustomEventsHandler
         {
             ev.IsAllowed = false;
             ev.Player.SendBroadcast(
-                "<b><color=#62A8FF>SITERP — ENREGISTREMENT REQUIS</color></b>\nOuvre l'interface avec J ou .jobs, accepte le règlement puis choisis ton métier.",
+                "<b><color=#62A8FF>SITERP — ENREGISTREMENT REQUIS</color></b>\nOuvre l'interface avec <b>.hud</b>, accepte le règlement puis choisis ton métier.",
                 4);
             return;
         }
@@ -120,8 +120,7 @@ internal sealed class SiteRpEvents : CustomEventsHandler
         ev.Player.SendBroadcast($"<b>CONFINEMENT ACTIF</b>\nEtat SCP: {state}. Porte verrouillee par SiteRP.", 3);
     }
 
-    // IMPORTANT: no radio event is intercepted here anymore.
-    // Range changes and power toggles remain 100% vanilla SCP:SL behavior.
+    // Radio behavior remains completely vanilla.
 
     public override void OnPlayerJoined(PlayerJoinedEventArgs ev)
     {
@@ -136,9 +135,9 @@ internal sealed class SiteRpEvents : CustomEventsHandler
             player.SendBroadcast(
                 "<b><color=#62A8FF>SITERP — BIENVENUE</color></b>\n" +
                 "L'interface d'admission s'affiche automatiquement.\n" +
-                "Règlement → choix du métier → déploiement.\n" +
-                "Raccourci: <b>J</b> (à confirmer une fois dans M → Server Specific Settings). Commande de secours: <b>.jobs</b>.\n" +
-                "La radio fonctionne normalement.",
+                "Règlement → choix du métier → déploiement sur la map.\n" +
+                "Commande HUD: <b>.hud</b>. Tu peux choisir ta propre touche avec le système bind/cmdbind de SCP:SL.\n" +
+                "<b>M reste réservé à ton interface native/admin.</b> La radio fonctionne normalement.",
                 12);
         });
     }
