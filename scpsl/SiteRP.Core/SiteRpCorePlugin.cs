@@ -16,9 +16,9 @@ namespace SiteRP.Core;
 public sealed class SiteRpCorePlugin : Plugin
 {
     public override string Name => "SiteRP.Core";
-    public override string Description => "Persistent SCP:SL DarkRP core: zero-player permanent round, mandatory rules/onboarding, interactive jobs UI, persistent UCR whitelists, SLWardrobe bridge, staff mode and operational facility.";
+    public override string Description => "Persistent SCP:SL DarkRP core: zero-player permanent round, mandatory rules/onboarding, native M jobs UI, persistent UCR whitelists, SLWardrobe bridge, staff mode and operational facility.";
     public override string Author => "SiteRP";
-    public override Version Version => new(1, 3, 0);
+    public override Version Version => new(1, 4, 0);
     public override Version RequiredApiVersion { get; } = new(LabApiProperties.CompiledVersion);
 
     internal static SiteRpCorePlugin? Instance { get; private set; }
@@ -44,7 +44,6 @@ public sealed class SiteRpCorePlugin : Plugin
         CustomHandlersManager.RegisterEventsHandler(Events);
         SiteRpScp079Policy.Register();
 
-        // Adds SiteRP/SLWardrobe permissions to RA staff without replacing permissions.yml.
         PermissionsManager.RegisterProvider<SiteRpPermissionProvider>();
         JobMenuManager.Register();
 
@@ -54,8 +53,8 @@ public sealed class SiteRpCorePlugin : Plugin
             Round.IsLocked = true;
         }
 
-        LabLogger.Info("[SiteRP.Core] v1.3.0 active - mandatory rules + in-game Hint/Radio jobs UI + persistent whitelists + zero/one-player permanent round + SLWardrobe + STAFF + Operational.");
-        LabLogger.Info("[SiteRP UI] Arrival flow: RULES -> JOB -> DEPLOYMENT. Radio RANGE = next, Radio POWER = validate, SiteRP J = back/open.");
+        LabLogger.Info("[SiteRP.Core] v1.4.0 active - mandatory rules + native M jobs UI + persistent whitelists + zero/one-player permanent round + SLWardrobe + STAFF + Operational.");
+        LabLogger.Info("[SiteRP UI] Arrival flow: REGLEMENT -> METIER -> DEPLOIEMENT. Interface: M -> Server Specific Settings. Radio untouched / vanilla.");
         LabLogger.Info("[SiteRP Jobs] RA staff receive siterp.jobs.* and slwardrobe.* through SiteRpPermissionProvider; whitelist changes save immediately.");
         LabLogger.Info("[SiteRP.SCP] Initial state: Site NORMAL; vanilla/custom SCP contained; C.A.S.S.I.E. cooperative.");
     }
@@ -103,8 +102,6 @@ public sealed class SiteRpCorePlugin : Plugin
         }
         catch (Exception ex)
         {
-            // A zero-player start can be rejected during a very early boot phase. The join
-            // handler retries, so this is deliberately non-fatal.
             LabLogger.Warn($"[SiteRP.Round] Demarrage permanent reporte: {ex.GetBaseException().Message}");
         }
     }
