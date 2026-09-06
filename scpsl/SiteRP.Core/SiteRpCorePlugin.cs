@@ -16,9 +16,9 @@ namespace SiteRP.Core;
 public sealed class SiteRpCorePlugin : Plugin
 {
     public override string Name => "SiteRP.Core";
-    public override string Description => "Persistent SCP:SL DarkRP core: zero-player permanent round, mandatory rules/onboarding, native M jobs UI, persistent UCR whitelists, SLWardrobe bridge, staff mode and operational facility.";
+    public override string Description => "Persistent SCP:SL DarkRP core: zero-player permanent round, mandatory onboarding, primary in-game jobs HUD, native M fallback/admin whitelist UI, persistent UCR whitelists, SLWardrobe bridge, staff mode and operational facility.";
     public override string Author => "SiteRP";
-    public override Version Version => new(1, 4, 0);
+    public override Version Version => new(1, 5, 0);
     public override Version RequiredApiVersion { get; } = new(LabApiProperties.CompiledVersion);
 
     internal static SiteRpCorePlugin? Instance { get; private set; }
@@ -53,9 +53,9 @@ public sealed class SiteRpCorePlugin : Plugin
             Round.IsLocked = true;
         }
 
-        LabLogger.Info("[SiteRP.Core] v1.4.0 active - mandatory rules + native M jobs UI + persistent whitelists + zero/one-player permanent round + SLWardrobe + STAFF + Operational.");
-        LabLogger.Info("[SiteRP UI] Arrival flow: REGLEMENT -> METIER -> DEPLOIEMENT. Interface: M -> Server Specific Settings. Radio untouched / vanilla.");
-        LabLogger.Info("[SiteRP Jobs] RA staff receive siterp.jobs.* and slwardrobe.* through SiteRpPermissionProvider; whitelist changes save immediately.");
+        LabLogger.Info("[SiteRP.Core] v1.5.0 active - jobs HUD + native M fallback/admin whitelists + rules + persistent UCR access + SLWardrobe + STAFF + Operational.");
+        LabLogger.Info("[SiteRP UI] Primary jobs interface: .jobs HUD. Navigation: prev/next/catprev/catnext/select. Native fallback: .jobs native -> M / Server Specific Settings.");
+        LabLogger.Info("[SiteRP Jobs] Ingame staff whitelist manager remains in M; grants/revokes save immediately by persistent SteamID64. RA staff receive siterp.jobs.* and slwardrobe.* through SiteRpPermissionProvider.");
         LabLogger.Info("[SiteRP.SCP] Initial state: Site NORMAL; vanilla/custom SCP contained; C.A.S.S.I.E. cooperative.");
     }
 
