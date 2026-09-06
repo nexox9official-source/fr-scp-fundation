@@ -4,6 +4,7 @@ using LabApi.Events.Arguments.WarheadEvents;
 using LabApi.Events.CustomHandlers;
 using LabApi.Features.Wrappers;
 using MEC;
+using PlayerRoles;
 using SiteRP.Core.Jobs;
 using LabLogger = LabApi.Features.Console.Logger;
 
@@ -99,17 +100,30 @@ internal sealed class SiteRpEvents : CustomEventsHandler
 
     public override void OnPlayerInteractingDoor(PlayerInteractingDoorEventArgs ev)
     {
-        if (!SiteRpInteractiveUi.IsDeployed(ev.Player))
+        // SCPs are controlled by the containment/079 policy below, not by human onboarding.
+        if (!ev.Player.IsSCP && !SiteRpInteractiveUi.IsDeployed(ev.Player))
         {
             ev.IsAllowed = false;
             ev.Player.SendBroadcast(
-                "<b><color=#62A8FF>SITERP — ENREGISTREMENT REQUIS</color></b>\nOuvre l'interface avec <b>.hud</b>, accepte le règlement puis choisis ton métier.",
+                "<b><color=#62A8FF>SITERP — ENREGISTREMENT REQUIS</color></b>\nOuvre le HUD, accepte le règlement puis choisis ton métier.",
                 4);
             return;
         }
 
         if (!SiteRpCorePlugin.ContainmentLocked || !ev.Player.IsSCP)
             return;
+
+        // C.A.S.S.I.E. cooperative is allowed to operate ordinary doors from cameras.
+        // Special lock/unlock/lockdown permissions are handled by SiteRpScp079Policy.
+        if (ev.Player.Role == RoleTypeId.Scp079)
+        {
+            if (SiteRpScpStateManager.Can079OpenCloseDoors)
+                return;
+
+            ev.IsAllowed = false;
+            ev.Player.SendBroadcast("<b><color=#00B7EB>SITERP IA</color></b>\nControle des portes indisponible: C.A.S.S.I.E. hors ligne/reconfinee.", 3);
+            return;
+        }
 
         string? scpId = SiteRpScpStateManager.GetScpId(ev.Player.Role);
         if (scpId is not null && SiteRpScpStateManager.CanLeaveContainment(scpId))
@@ -136,7 +150,7 @@ internal sealed class SiteRpEvents : CustomEventsHandler
                 "<b><color=#62A8FF>SITERP — BIENVENUE</color></b>\n" +
                 "L'interface d'admission s'affiche automatiquement.\n" +
                 "Règlement → choix du métier → déploiement sur la map.\n" +
-                "Commande HUD: <b>.hud</b>. Tu peux choisir ta propre touche avec le système bind/cmdbind de SCP:SL.\n" +
+                "Le HUD se pilote avec les raccourcis SiteRP configurables; les commandes restent un secours.\n" +
                 "<b>M reste réservé à ton interface native/admin.</b> La radio fonctionne normalement.",
                 12);
         });
@@ -145,6 +159,10 @@ internal sealed class SiteRpEvents : CustomEventsHandler
     public override void OnPlayerChangedRole(PlayerChangedRoleEventArgs ev)
     {
         SiteRpCorePlugin.OnPlayerRoleChanged(ev.Player);
+        SiteRpCustomTeamDisplay.ScheduleRefresh(ev.Player);
+
+        if (ev.Player.Role == RoleTypeId.Scp079)
+            Timing.CallDelayed(1f, () => SiteRpScp079Policy.ShowProtocol(ev.Player));
     }
 
     public override void OnPlayerLeft(PlayerLeftEventArgs ev)
