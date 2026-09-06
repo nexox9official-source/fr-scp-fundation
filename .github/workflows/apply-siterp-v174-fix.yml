@@ -1,0 +1,53 @@
+name: Apply SiteRP v1.7.4 runtime cleanup
+
+on:
+  push:
+    branches: [siterp-core-build]
+    paths:
+      - '.github/workflows/apply-siterp-v174-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: siterp-core-build
+          fetch-depth: 0
+      - name: Patch SiteRP.Core source
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('scpsl/SiteRP.Core/SiteRpCorePlugin.cs')
+          s = p.read_text()
+          s = s.replace('public override Version Version => new(1, 7, 3);', 'public override Version Version => new(1, 7, 4);')
+          s = s.replace('\n        EnsurePermanentRoundStarted();\n\n        LabLogger.Info(', '\n        // Round.Start is intentionally delayed until the facility/map exists.\n        LabLogger.Info(', 1)
+          s = s.replace('v1.7.3', 'v1.7.4')
+          p.write_text(s)
+          p = Path('scpsl/SiteRP.Core/SiteRP.Core.csproj')
+          s = p.read_text().replace('<Version>1.7.3</Version>', '<Version>1.7.4</Version>')
+          p.write_text(s)
+      - name: Commit source fix
+        run: |
+          git config user.name 'SiteRP Build Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add scpsl/SiteRP.Core/SiteRpCorePlugin.cs scpsl/SiteRP.Core/SiteRP.Core.csproj
+          git commit -m 'Fix SiteRP v1.7.4 delayed round startup'
+          git push origin HEAD:siterp-core-build
+      - name: Fetch NAudio.Core 2.2.1 for UCT compatibility
+        run: |
+          mkdir -p /tmp/naudio
+          curl -fsSL 'https://api.nuget.org/v3-flatcontainer/naudio.core/2.2.1/naudio.core.2.2.1.nupkg' -o /tmp/naudio/naudio.nupkg
+          unzip -q /tmp/naudio/naudio.nupkg -d /tmp/naudio/pkg
+          cp /tmp/naudio/pkg/lib/netstandard2.0/NAudio.Core.dll /tmp/naudio/NAudio.Core.dll
+          sha256sum /tmp/naudio/NAudio.Core.dll
+      - name: Upload NAudio.Core
+        uses: actions/upload-artifact@v4
+        with:
+          name: SiteRP-v1.7.4-NAudio-Core
+          path: /tmp/naudio/NAudio.Core.dll
+          if-no-files-found: error
