@@ -1,10 +1,16 @@
 using LabApi.Features.Permissions;
-using LabApi.Features.Wrappers;
 
 namespace SiteRP.Core.Jobs;
 
 public static class JobRuntime
 {
+    public static string GetPersistentUserId(Player player)
+    {
+        string raw = player.UserId ?? string.Empty;
+        int providerIndex = raw.IndexOf('@');
+        return providerIndex > 0 ? raw.Substring(0, providerIndex) : raw;
+    }
+
     public static bool IsStaff(Player player)
     {
         if (player == null)
@@ -17,8 +23,11 @@ public static class JobRuntime
         }
         catch
         {
-            // Fall back to RA group names if permissions are not yet configured.
+            // Fall back to RA access/group names if providers are still initializing.
         }
+
+        if (player.RemoteAdminAccess)
+            return true;
 
         string group = player.PermissionsGroupName ?? string.Empty;
         return group.Equals("owner", StringComparison.OrdinalIgnoreCase)
@@ -29,7 +38,7 @@ public static class JobRuntime
     public static int CountPlayersOnRole(int roleId)
     {
         int count = 0;
-        foreach (Player player in Player.List)
+        foreach (Player player in Player.ReadyList)
         {
             if (SiteRpUcrBridge.TryGetActiveRoleId(player, out int current) && current == roleId)
                 count++;
@@ -52,9 +61,11 @@ public static class JobRuntime
             return false;
         }
 
-        if (job.AccessMode == JobAccessMode.Whitelist && !IsStaff(player) && !JobWhitelistRepository.IsWhitelisted(player.UserId, job.UcrRoleId))
+        if (job.AccessMode == JobAccessMode.Whitelist &&
+            !IsStaff(player) &&
+            !JobWhitelistRepository.IsWhitelisted(GetPersistentUserId(player), job.UcrRoleId))
         {
-            reason = "Role reserve : whitelist requise.";
+            reason = "Acces reserve : tu n'es pas whitelist pour ce metier.";
             return false;
         }
 
