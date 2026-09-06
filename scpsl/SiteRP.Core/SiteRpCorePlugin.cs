@@ -16,9 +16,9 @@ namespace SiteRP.Core;
 public sealed class SiteRpCorePlugin : Plugin
 {
     public override string Name => "SiteRP.Core";
-    public override string Description => "Persistent SCP:SL DarkRP core: integrated rules/jobs HUD, native M fallback/admin whitelist UI, persistent UCR whitelists, SLWardrobe bridge, staff mode and operational facility.";
+    public override string Description => "Persistent SCP:SL DarkRP core: integrated rules/jobs HUD, player-selectable binds, persistent UCR whitelists, SLWardrobe bridge, staff mode and operational facility.";
     public override string Author => "SiteRP";
-    public override Version Version => new(1, 6, 0);
+    public override Version Version => new(1, 6, 1);
     public override Version RequiredApiVersion { get; } = new(LabApiProperties.CompiledVersion);
 
     internal static SiteRpCorePlugin? Instance { get; private set; }
@@ -48,14 +48,11 @@ public sealed class SiteRpCorePlugin : Plugin
         JobMenuManager.Register();
         JobHudKeybindManager.Register();
 
-        // Round wrappers may not be fully initialized while LabAPI is enabling plugins.
-        // Keep the permanent-round setup inside the guarded helper instead of allowing
-        // an early NullReferenceException to disable the whole plugin.
         EnsurePermanentRoundStarted();
 
-        LabLogger.Info("[SiteRP.Core] v1.6.0 active - integrated rules/jobs HUD + native M fallback/admin whitelists + persistent UCR access + SLWardrobe + STAFF + Operational.");
-        LabLogger.Info("[SiteRP UI] Primary interface: J -> REGLEMENT -> METIER -> DEPLOIEMENT. Fleches = navigation, Entree = continuer/choisir, Retour arriere = fermer. .jobs reste disponible.");
-        LabLogger.Info("[SiteRP UI] M -> Server Specific Settings reste disponible comme fallback et pour la gestion staff des whitelists. Radio vanilla intacte.");
+        LabLogger.Info("[SiteRP.Core] v1.6.1 active - rules/jobs HUD + player-selectable binds + persistent UCR access + SLWardrobe + STAFF + Operational.");
+        LabLogger.Info("[SiteRP UI] M is untouched/reserved for the native admin interface. Player HUD: .hud / .jobs / .rules; keys are chosen with bind/cmdbind.");
+        LabLogger.Info("[SiteRP Jobs] Custom player roles deploy through their UCR spawn_settings. Radio remains vanilla.");
         LabLogger.Info("[SiteRP.SCP] Initial state: Site NORMAL; vanilla/custom SCP contained; C.A.S.S.I.E. cooperative.");
     }
 
