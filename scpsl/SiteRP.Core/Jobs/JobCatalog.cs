@@ -56,7 +56,7 @@ public static class JobCatalog
             .ToList()
             .AsReadOnly();
 
-        Logger.Info($"[SiteRP Jobs] {_jobs.Count} roles UCR charges dans le selecteur RP.");
+        Logger.Info($"[SiteRP Jobs] {_jobs.Count} roles UCR charges dans le selecteur RP; chaque role utilise son morph SiteRP_Role_<ID>.");
     }
 
     public static JobDefinition? Find(int roleId) => _jobs.FirstOrDefault(x => x.UcrRoleId == roleId);
@@ -134,28 +134,11 @@ public static class JobCatalog
         return "SITERP";
     }
 
-    private static string GetWardrobe(int id)
-    {
-        if (id >= 1401 && id <= 1403) return "SiteRP_SecurityCommand";
-        if ((id >= 1404 && id <= 1408) || id == 1410 || id == 1411) return "SiteRP_Security";
-        if (id == 1409) return "SiteRP_InternalResponse";
-        if (id == 1412 || id == 1413) return "SiteRP_Detention";
-        if (id == 1205) return "SiteRP_Paramedic";
-        if (id == 1207 || id == 1313) return "SiteRP_CBRN";
-        if (id == 1312) return "SiteRP_FireRescue";
-        if (id == 1590) return "SiteRP_MTFCommand";
-        if (id >= 1601 && id <= 1605) return "SiteRP_Epsilon11";
-        if (id >= 1611 && id <= 1614) return "SiteRP_Alpha1";
-        if (id >= 1621 && id <= 1624) return "SiteRP_Omega1";
-        if (id >= 1631 && id <= 1635) return "SiteRP_Beta7";
-        if (id >= 1641 && id <= 1645) return "SiteRP_Nu7";
-
-        // Units without their final bespoke wardrobe still receive the clean generic MTF
-        // family instead of falling back to an unrelated vanilla appearance.
-        if (id >= 1651 && id <= 1774)
-            return id % 10 == 1 ? "SiteRP_MTFCommand" : "SiteRP_MTF";
-
-        if (id == 1999) return "SiteRP_Staff";
-        return string.Empty;
-    }
+    /// <summary>
+    /// v1.7.1: every custom UCR job has its own SLWardrobe suit.  The complete server
+    /// pack ships a matching SiteRP_Role_<ID>.yml for every one of the 140 roles.
+    /// Shared ProjectMER pieces are still reused where appropriate, while the role torso,
+    /// rank/identity marks and suit definition remain dedicated to that exact job.
+    /// </summary>
+    private static string GetWardrobe(int id) => id > 0 ? $"SiteRP_Role_{id}" : string.Empty;
 }
