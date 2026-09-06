@@ -6,15 +6,16 @@ using MapGeneration;
 using UnityEngine;
 using AdminToy = LabApi.Features.Wrappers.AdminToy;
 using PrimitiveObjectToy = LabApi.Features.Wrappers.PrimitiveObjectToy;
+using InteractableToy = LabApi.Features.Wrappers.InteractableToy;
+using TextToy = LabApi.Features.Wrappers.TextToy;
 using PrimitiveFlags = AdminToys.PrimitiveFlags;
 using LabLogger = LabApi.Features.Console.Logger;
 
 namespace SiteRP.Core;
 
 /// <summary>
-/// Non-destructive operational-site overlay built from the real v0.3 map audit.
-/// It NEVER destroys, disables or moves vanilla geometry. Every object created here is
-/// a networked AdminToy tracked by this class and can be removed instantly.
+/// Non-destructive operational-site overlay. Every created object is networked,
+/// tracked and removable. The evacuation shelter now contains the first real RP alarm console.
 /// </summary>
 internal static class SiteRpOperationalMap
 {
@@ -27,7 +28,6 @@ internal static class SiteRpOperationalMap
     private static readonly Color Floor = new(0.24f, 0.27f, 0.29f, 1f);
 
     public static bool IsApplied => Spawned.Any(x => x is not null && !x.IsDestroyed);
-
     public static int SpawnedCount => Spawned.Count(x => x is not null && !x.IsDestroyed);
 
     public static string Apply()
@@ -68,7 +68,7 @@ internal static class SiteRpOperationalMap
                 rooms++;
             }
 
-            string result = $"SiteRP Operational applique: {rooms} salle(s), {SpawnedCount} element(s) reversibles.";
+            string result = $"SiteRP Operational applique: {rooms} salle(s), {SpawnedCount} element(s) reversibles, panneau alarmes interactif actif.";
             LabLogger.Info($"[SiteRP.Map] {result}");
             return result;
         }
@@ -131,11 +131,52 @@ internal static class SiteRpOperationalMap
         AddBench(room, new Vector3(2.52f, 0.36f, 5.15f), 0f);
         AddCabinet(room, new Vector3(-2.35f, 1.05f, 3.55f));
         AddCabinet(room, new Vector3(2.35f, 1.05f, 3.55f));
+        BuildAlarmPanel(room);
+    }
+
+    private static void BuildAlarmPanel(Room room)
+    {
+        // Mounted on the already-audited/rebuilt evacuation shelter front wall.
+        AddBox(room, new Vector3(0f, 2.15f, 2.91f), Vector3.zero, new Vector3(3.75f, 1.45f, 0.12f), Dark, false);
+        AddBox(room, new Vector3(0f, 2.80f, 2.84f), Vector3.zero, new Vector3(3.55f, 0.10f, 0.08f), FoundationBlue, false);
+
+        AddAlarmButton(room, new Vector3(-1.30f, 2.05f, 2.78f), new Color(0.20f, 0.75f, 0.25f, 1f), SiteRpSiteState.Normal);
+        AddAlarmButton(room, new Vector3(-0.65f, 2.05f, 2.78f), new Color(1.00f, 0.62f, 0.10f, 1f), SiteRpSiteState.Incident);
+        AddAlarmButton(room, new Vector3(0f, 2.05f, 2.78f), new Color(1.00f, 0.20f, 0.18f, 1f), SiteRpSiteState.Breach);
+        AddAlarmButton(room, new Vector3(0.65f, 2.05f, 2.78f), new Color(0.62f, 0.02f, 0.02f, 1f), SiteRpSiteState.MajorBreach);
+        AddAlarmButton(room, new Vector3(1.30f, 2.05f, 2.78f), new Color(0.20f, 0.55f, 1.00f, 1f), SiteRpSiteState.Evacuation);
+
+        AddPanelText(room,
+            new Vector3(0f, 2.57f, 2.76f),
+            "<b>CONTROLE ALARMES SITERP</b>\n<color=#73D673>NORMAL</color>   <color=#FFB84D>INCIDENT</color>   <color=#FF6961>BREACH</color>   <color=#FF3030>MAJOR</color>   <color=#62A8FF>EVAC</color>");
+    }
+
+    private static void AddAlarmButton(Room room, Vector3 localPosition, Color color, SiteRpSiteState state)
+    {
+        AddBox(room, localPosition, Vector3.zero, new Vector3(0.42f, 0.42f, 0.16f), color, false);
+
+        Vector3 worldPosition = room.Transform.TransformPoint(localPosition + new Vector3(0f, 0f, -0.08f));
+        Quaternion worldRotation = room.Rotation;
+        InteractableToy toy = InteractableToy.Create(worldPosition, worldRotation, new Vector3(0.52f, 0.52f, 0.35f), null, false);
+        toy.InteractionDuration = 0f;
+        toy.OnInteracted += player => SiteRpAlarmSystem.Press(player, state);
+        toy.Spawn();
+        Spawned.Add(toy);
+    }
+
+    private static void AddPanelText(Room room, Vector3 localPosition, string text)
+    {
+        Vector3 worldPosition = room.Transform.TransformPoint(localPosition);
+        Quaternion worldRotation = room.Rotation * Quaternion.Euler(0f, 180f, 0f);
+        TextToy toy = TextToy.Create(worldPosition, worldRotation, new Vector3(0.18f, 0.18f, 0.18f), null, false);
+        toy.TextFormat = text;
+        toy.DisplaySize = new Vector2(900f, 300f);
+        toy.Spawn();
+        Spawned.Add(toy);
     }
 
     private static void Build127Cleanup(Room room)
     {
-        // Visual floor skin only: no collision, so the vanilla Audio Log and interactions remain usable.
         AddBox(room, new Vector3(-2.55f, 0.035f, 0.05f), Vector3.zero, new Vector3(4.25f, 0.07f, 5.05f), Floor, false);
         AddBox(room, new Vector3(-3.55f, 0.72f, 0.35f), Vector3.zero, new Vector3(1.25f, 1.45f, 2.70f), Wall, true);
         AddBox(room, new Vector3(-3.55f, 1.46f, 0.35f), Vector3.zero, new Vector3(1.27f, 0.08f, 2.72f), Dark, false);
