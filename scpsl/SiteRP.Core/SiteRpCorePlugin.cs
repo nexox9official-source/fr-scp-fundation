@@ -18,7 +18,7 @@ public sealed class SiteRpCorePlugin : Plugin
     public override string Name => "SiteRP.Core";
     public override string Description => "Persistent SCP:SL DarkRP core: permanent round, per-SCP containment states, CASSIE/079 RP policy, operational facility, persistent UCR jobs/whitelists, staff mode and safe map tooling.";
     public override string Author => "SiteRP";
-    public override Version Version => new(1, 1, 0);
+    public override Version Version => new(1, 1, 1);
     public override Version RequiredApiVersion { get; } = new(LabApiProperties.CompiledVersion);
 
     internal static SiteRpCorePlugin? Instance { get; private set; }
@@ -51,7 +51,7 @@ public sealed class SiteRpCorePlugin : Plugin
         if (PermanentRoundEnabled)
             Round.IsLocked = true;
 
-        LabLogger.Info("[SiteRP.Core] v1.1.0 active - persistent DarkRP + jobs menu M + persistent whitelists + STAFF + custom skins bridge.");
+        LabLogger.Info("[SiteRP.Core] v1.1.1 active - persistent DarkRP + jobs menu M + persistent whitelists + STAFF + custom skins bridge + Operational timing hotfix.");
         LabLogger.Info("[SiteRP Jobs] RA staff automatically receive siterp.jobs.* and slwardrobe.* through SiteRpPermissionProvider.");
         LabLogger.Info("[SiteRP.SCP] Initial state: Site NORMAL; vanilla/custom SCP contained; C.A.S.S.I.E. cooperative.");
     }
