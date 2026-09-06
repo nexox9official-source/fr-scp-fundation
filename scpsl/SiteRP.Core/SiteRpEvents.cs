@@ -20,21 +20,24 @@ internal sealed class SiteRpEvents : CustomEventsHandler
 
         SiteRpCorePlugin.CleanupDecorativeRagdolls($"map generated (seed {ev.Seed})");
 
+        // Start the persistent Site even when the server is empty. If the base game rejects
+        // a zero-player force-start on a particular build, OnPlayerJoined retries immediately.
+        Timing.CallDelayed(2f, SiteRpCorePlugin.EnsurePermanentRoundStarted);
+
         // LabAPI's AdminToy wrappers read NetworkClient.prefabs. During MapGenerated the
         // Facility scene can still be loading, so those prefabs may not exist yet.
-        // Delay the overlay until the scene/prefab registry has settled instead of throwing.
         ScheduleOperationalApply(1.5f, 0);
     }
 
     public override void OnServerRoundStarted()
     {
         if (SiteRpCorePlugin.PermanentRoundEnabled)
+        {
+            Round.KeepRoundOnOne = true;
             Round.IsLocked = true;
+        }
 
         SiteRpCorePlugin.CleanupDecorativeRagdolls("round started");
-
-        // Second safety trigger. If MapGenerated happened before the admin-toy prefabs
-        // were available, this retries after RoundStarted without touching the vanilla map.
         ScheduleOperationalApply(0.75f, 0);
     }
 
@@ -59,8 +62,6 @@ internal sealed class SiteRpEvents : CustomEventsHandler
                 return;
             }
 
-            // NetworkClient.prefabs is sometimes populated slightly later on Linux headless.
-            // Retry progressively instead of failing the whole operational layer permanently.
             ScheduleOperationalApply(1.5f + attempt, attempt + 1);
         });
     }
@@ -71,6 +72,7 @@ internal sealed class SiteRpEvents : CustomEventsHandler
             return;
 
         ev.IsAllowed = false;
+        Round.KeepRoundOnOne = true;
         Round.IsLocked = true;
     }
 
@@ -106,6 +108,15 @@ internal sealed class SiteRpEvents : CustomEventsHandler
 
     public override void OnPlayerInteractingDoor(PlayerInteractingDoorEventArgs ev)
     {
+        // Arrival gate: a player must read/accept the rules and select a SiteRP job before
+        // being allowed to use the Facility as an RP character.
+        if (!SiteRpInteractiveUi.IsDeployed(ev.Player))
+        {
+            ev.IsAllowed = false;
+            ev.Player.SendBroadcast("<b><color=#62A8FF>SITERP</color></b>\nAccepte le règlement et choisis ton métier avant le déploiement.", 3);
+            return;
+        }
+
         if (!SiteRpCorePlugin.ContainmentLocked || !ev.Player.IsSCP)
             return;
 
@@ -123,18 +134,39 @@ internal sealed class SiteRpEvents : CustomEventsHandler
             3);
     }
 
+    public override void OnPlayerChangingRadioRange(PlayerChangingRadioRangeEventArgs ev)
+    {
+        if (!SiteRpInteractiveUi.IsOpen(ev.Player))
+            return;
+
+        ev.IsAllowed = false;
+        SiteRpInteractiveUi.HandleRadioNext(ev.Player);
+    }
+
+    public override void OnPlayerTogglingRadio(PlayerTogglingRadioEventArgs ev)
+    {
+        if (!SiteRpInteractiveUi.IsOpen(ev.Player))
+            return;
+
+        ev.IsAllowed = false;
+        SiteRpInteractiveUi.HandleRadioConfirm(ev.Player);
+    }
+
     public override void OnPlayerJoined(PlayerJoinedEventArgs ev)
     {
         Player player = ev.Player;
-        Timing.CallDelayed(4f, () =>
+
+        Timing.CallDelayed(0.8f, SiteRpCorePlugin.EnsurePermanentRoundStarted);
+        Timing.CallDelayed(1.6f, () =>
         {
             if (player is null || !player.IsReady)
                 return;
 
+            SiteRpInteractiveUi.BeginArrival(player);
             player.SendBroadcast(
-                "<b><color=#62A8FF>SITERP — METIERS</color></b>\n" +
-                "Choisis ton metier dans <b>Echap > Parametres > Server-Specific</b>.\n" +
-                $"Acces, whitelist, places et cooldown ({JobRuntime.JobChangeCooldownSeconds}s) sont verifies par le serveur.",
+                "<b><color=#62A8FF>SITERP — BIENVENUE</color></b>\n" +
+                "Règlement obligatoire puis choix du métier avant déploiement.\n" +
+                "Dans l'interface: PORTÉE RADIO = suivant, ON/OFF = valider, J = retour.",
                 10);
         });
     }
@@ -146,6 +178,7 @@ internal sealed class SiteRpEvents : CustomEventsHandler
 
     public override void OnPlayerLeft(PlayerLeftEventArgs ev)
     {
+        SiteRpInteractiveUi.CleanupPlayer(ev.Player);
         JobRuntime.CleanupPlayer(ev.Player);
         SiteRpCorePlugin.CleanupPlayer(ev.Player);
     }
