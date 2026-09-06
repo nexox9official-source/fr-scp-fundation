@@ -1,0 +1,62 @@
+name: Fetch SiteRP Community Assets
+
+on:
+  push:
+    branches:
+      - siterp-core-build
+    paths:
+      - '.github/workflows/fetch-community-assets.yml'
+      - 'scpsl/community-assets-fetch-trigger.txt'
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install archive tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y p7zip-full
+
+      - name: Fetch Quaternius CC0 community character models
+        run: |
+          set -euxo pipefail
+          mkdir -p intake/models
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/agentkaerf/FreeModels.git /tmp/FreeModels
+          cd /tmp/FreeModels
+          git sparse-checkout set \
+            'Ultimate Modular Men- Feb 2022' \
+            'Ultimate Modular Women - April 2022'
+          cp -R 'Ultimate Modular Men- Feb 2022' "$GITHUB_WORKSPACE/intake/models/"
+          cp -R 'Ultimate Modular Women - April 2022' "$GITHUB_WORKSPACE/intake/models/"
+          cp README.md "$GITHUB_WORKSPACE/intake/models/QUATERNIUS_MIRROR_README.md"
+
+      - name: Fetch community Site-76 MER map
+        run: |
+          set -euxo pipefail
+          mkdir -p intake/maps/site76
+          curl -L --fail --retry 3 \
+            'https://github.com/MujisongPlay/ScpSite76Plugin/releases/download/Release/site76lowdetailed.rar' \
+            -o /tmp/site76lowdetailed.rar
+          7z x -y /tmp/site76lowdetailed.rar -ointake/maps/site76
+          curl -L --fail --retry 3 \
+            'https://raw.githubusercontent.com/MujisongPlay/ScpSite76Plugin/main/README.md' \
+            -o intake/maps/site76/SOURCE_README.md
+          find intake/maps/site76 -maxdepth 5 -type f -print | sort
+
+      - name: Inventory and hashes
+        run: |
+          set -euxo pipefail
+          find intake -type f -print0 | sort -z | xargs -0 sha256sum > intake/SHA256SUMS.txt
+          find intake -type f -printf '%P\t%s bytes\n' | sort > intake/INVENTORY.txt
+
+      - name: Upload raw community intake
+        uses: actions/upload-artifact@v4
+        with:
+          name: SiteRP-Community-Assets-Raw
+          path: intake
+          compression-level: 6
+          if-no-files-found: error
