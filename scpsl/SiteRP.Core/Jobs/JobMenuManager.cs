@@ -106,7 +106,11 @@ public static class JobMenuManager
         List<ServerSpecificSettingBase> page = Navigation(player);
         page.Add(new SSGroupHeader("SITERP — REGLEMENT", false, "Reglement obligatoire du serveur."));
         page.Add(new SSTextArea(RulesTextId, $"{status}\n\n{rules}"));
-        page.Add(new SSButton(AcceptRulesId, "Acceptation", SiteRpRulesRepository.HasAccepted(player) ? "Deja accepte" : "J'ACCEPTE LE REGLEMENT", 0.5f,
+        page.Add(new SSButton(
+            AcceptRulesId,
+            "Acceptation",
+            SiteRpRulesRepository.HasAccepted(player) ? "DEJA ACCEPTE" : "J'ACCEPTE LE REGLEMENT",
+            0.5f,
             "L'acceptation est sauvegardee par SteamID64 et version de reglement."));
         Send(player, page);
     }
@@ -130,9 +134,10 @@ public static class JobMenuManager
             return;
         }
 
-        state.CategoryIndex = Math.Clamp(state.CategoryIndex, 0, Categories.Count - 1);
+        state.CategoryIndex = ClampIndex(state.CategoryIndex, Categories.Count);
         int dropdownId = FirstCategoryJobId + state.CategoryIndex;
-        List<JobDefinition> jobs = JobsByDropdown.GetValueOrDefault(dropdownId) ?? new List<JobDefinition>();
+        List<JobDefinition> jobs = GetJobsForDropdown(dropdownId);
+
         if (jobs.Count > 0 && !jobs.Any(x => x.UcrRoleId == state.SelectedRoleId))
             state.SelectedRoleId = jobs[0].UcrRoleId;
 
@@ -140,10 +145,16 @@ public static class JobMenuManager
         string info = selected is null ? "Aucun role dans cette categorie." : DescribeJob(player, selected);
 
         List<ServerSpecificSettingBase> page = Navigation(player);
-        page.Add(new SSGroupHeader("SITERP — CHOIX DU METIER", false, "Choisis ton departement puis ton role. Les acces reserves sont controles cote serveur."));
+        page.Add(new SSGroupHeader(
+            "SITERP — CHOIX DU METIER",
+            false,
+            "Choisis ton departement puis ton role. Les acces reserves sont controles cote serveur."));
         page.Add(_categorySetting);
-        if (jobs.Count > 0)
-            page.Add(_ownedSettings.First(x => x.SettingId == dropdownId));
+
+        ServerSpecificSettingBase? roleDropdown = _ownedSettings.FirstOrDefault(x => x.SettingId == dropdownId);
+        if (jobs.Count > 0 && roleDropdown is not null)
+            page.Add(roleDropdown);
+
         page.Add(new SSTextArea(JobInfoId, info));
         page.Add(new SSButton(JoinJobId, "Deploiement", "REJOINDRE CE METIER", 0.35f));
         page.Add(new SSButton(RefreshJobsId, "Actualiser", "ACTUALISER LES PLACES"));
@@ -161,15 +172,16 @@ public static class JobMenuManager
 
         BuildDefinitions();
         PlayerUiState state = GetState(player);
-        state.StaffTargetIndex = Math.Clamp(state.StaffTargetIndex, 0, Math.Max(0, StaffTargetIds.Count - 1));
-        state.StaffRoleIndex = Math.Clamp(state.StaffRoleIndex, 0, Math.Max(0, StaffRoles.Count - 1));
+        state.StaffTargetIndex = ClampIndex(state.StaffTargetIndex, StaffTargetIds.Count);
+        state.StaffRoleIndex = ClampIndex(state.StaffRoleIndex, StaffRoles.Count);
 
         string targetId = StaffTargetIds.Count == 0 ? string.Empty : StaffTargetIds[state.StaffTargetIndex];
-        JobDefinition? role = StaffRoles.Count == 0 ? null : StaffRoles[state.StaffRoleIndex];
-        bool has = role is not null && targetId.Length > 0 && JobWhitelistRepository.IsWhitelisted(targetId, role.UcrRoleId);
-        string info = role is null
+        JobDefinition? selectedRole = StaffRoles.Count == 0 ? null : StaffRoles[state.StaffRoleIndex];
+        bool has = selectedRole is not null && targetId.Length > 0 && JobWhitelistRepository.IsWhitelisted(targetId, selectedRole.UcrRoleId);
+
+        string info = selectedRole is null
             ? "Aucun role whitelistable charge."
-            : $"Joueur: <b>{Escape(targetId)}</b>\nRole: <b>{Escape(role.Name)}</b> ({role.UcrRoleId})\nEtat: {(has ? "<color=#73D673>WHITELIST PRESENTE</color>" : "<color=#FFB84D>NON WHITELISTE</color>")}";
+            : $"Joueur: <b>{Escape(targetId)}</b>\nRole: <b>{Escape(selectedRole.Name)}</b> ({selectedRole.UcrRoleId})\nEtat: {(has ? "<color=#73D673>WHITELIST PRESENTE</color>" : "<color=#FFB84D>NON WHITELISTE</color>")}";
 
         List<ServerSpecificSettingBase> page = Navigation(player);
         page.Add(new SSGroupHeader("SITERP — GESTION DES WHITELISTS", false, "Ajout/retrait immediat et persistant."));
@@ -187,8 +199,13 @@ public static class JobMenuManager
     private static void BuildDefinitions()
     {
         Categories.Clear();
-        Categories.AddRange(JobCatalog.All.Where(x => x.AccessMode != JobAccessMode.StaffOnly)
-            .Select(x => x.Category).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x));
+        Categories.AddRange(
+            JobCatalog.All
+                .Where(x => x.AccessMode != JobAccessMode.StaffOnly)
+                .Select(x => x.Category)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(x => x));
 
         JobsByDropdown.Clear();
         List<ServerSpecificSettingBase> owned = new()
@@ -207,31 +224,57 @@ public static class JobMenuManager
             new SSButton(StaffRefreshId, "Actualiser", "ACTUALISER"),
         };
 
-        _categorySetting = new SSDropdownSetting(CategoryId, "Departement / unite",
-            Categories.Count == 0 ? new[] { "Aucun metier" } : Categories.ToArray(), 0, SSDropdownSetting.DropdownEntryType.Hybrid);
+        _categorySetting = new SSDropdownSetting(
+            CategoryId,
+            "Departement / unite",
+            Categories.Count == 0 ? new[] { "Aucun metier" } : Categories.ToArray(),
+            0,
+            SSDropdownSetting.DropdownEntryType.Hybrid);
         owned.Add(_categorySetting);
 
         for (int i = 0; i < Categories.Count; i++)
         {
-            List<JobDefinition> jobs = JobCatalog.All.Where(x => x.AccessMode != JobAccessMode.StaffOnly && string.Equals(x.Category, Categories[i], StringComparison.OrdinalIgnoreCase))
-                .OrderBy(x => x.SortOrder).ToList();
+            List<JobDefinition> jobs = JobCatalog.All
+                .Where(x => x.AccessMode != JobAccessMode.StaffOnly && string.Equals(x.Category, Categories[i], StringComparison.OrdinalIgnoreCase))
+                .OrderBy(x => x.SortOrder)
+                .ToList();
+
             int id = FirstCategoryJobId + i;
             JobsByDropdown[id] = jobs;
             string[] options = jobs.Select(JobOption).ToArray();
-            owned.Add(new SSDropdownSetting(id, "Metier / grade", options.Length == 0 ? new[] { "Aucun role" } : options, 0, SSDropdownSetting.DropdownEntryType.Hybrid));
+            owned.Add(new SSDropdownSetting(
+                id,
+                "Metier / grade",
+                options.Length == 0 ? new[] { "Aucun role" } : options,
+                0,
+                SSDropdownSetting.DropdownEntryType.Hybrid));
         }
 
         StaffTargetIds.Clear();
         List<Player> online = Player.ReadyList.OrderBy(x => x.PlayerId).ToList();
         StaffTargetIds.AddRange(online.Select(JobRuntime.GetPersistentUserId));
-        string[] targets = online.Select(x => $"#{x.PlayerId} — {x.Nickname} — {JobRuntime.GetPersistentUserId(x)}").ToArray();
-        _staffTargetSetting = new SSDropdownSetting(StaffTargetId, "Joueur", targets.Length == 0 ? new[] { "Aucun joueur en ligne" } : targets, 0, SSDropdownSetting.DropdownEntryType.Hybrid);
+        string[] targets = online
+            .Select(x => $"#{x.PlayerId} — {x.Nickname} — {JobRuntime.GetPersistentUserId(x)}")
+            .ToArray();
+
+        _staffTargetSetting = new SSDropdownSetting(
+            StaffTargetId,
+            "Joueur",
+            targets.Length == 0 ? new[] { "Aucun joueur en ligne" } : targets,
+            0,
+            SSDropdownSetting.DropdownEntryType.Hybrid);
         owned.Add(_staffTargetSetting);
 
         StaffRoles.Clear();
         StaffRoles.AddRange(JobCatalog.All.Where(x => x.AccessMode == JobAccessMode.Whitelist).OrderBy(x => x.SortOrder));
         string[] staffRoleOptions = StaffRoles.Select(x => $"{x.UcrRoleId} — {x.Category} — {x.Name}").ToArray();
-        _staffRoleSetting = new SSDropdownSetting(StaffRoleId, "Role a autoriser", staffRoleOptions.Length == 0 ? new[] { "Aucun role" } : staffRoleOptions, 0, SSDropdownSetting.DropdownEntryType.Hybrid);
+
+        _staffRoleSetting = new SSDropdownSetting(
+            StaffRoleId,
+            "Role a autoriser",
+            staffRoleOptions.Length == 0 ? new[] { "Aucun role" } : staffRoleOptions,
+            0,
+            SSDropdownSetting.DropdownEntryType.Hybrid);
         owned.Add(_staffRoleSetting);
 
         _ownedSettings = owned.ToArray();
@@ -245,13 +288,16 @@ public static class JobMenuManager
             _ownedSettings.First(x => x.SettingId == RulesNavId),
             _ownedSettings.First(x => x.SettingId == JobsNavId),
         };
+
         if (JobRuntime.IsStaff(player))
             result.Add(_ownedSettings.First(x => x.SettingId == StaffNavId));
         return result;
     }
 
-    private static void Send(Player player, List<ServerSpecificSettingBase> page) =>
+    private static void Send(Player player, List<ServerSpecificSettingBase> page)
+    {
         ServerSpecificSettingsSync.SendToPlayer(player.ReferenceHub, page.ToArray());
+    }
 
     private static void OnSettingValueReceived(ReferenceHub hub, ServerSpecificSettingBase setting)
     {
@@ -262,30 +308,49 @@ public static class JobMenuManager
         PlayerUiState state = GetState(player);
         int id = setting.SettingId;
 
-        if (id == RulesNavId && setting is SSButton) { ShowRules(player); return; }
-        if (id == JobsNavId && setting is SSButton) { ShowJobs(player); return; }
-        if (id == StaffNavId && setting is SSButton) { ShowStaff(player); return; }
+        if (id == RulesNavId && setting is SSButton)
+        {
+            ShowRules(player);
+            return;
+        }
+        if (id == JobsNavId && setting is SSButton)
+        {
+            ShowJobs(player);
+            return;
+        }
+        if (id == StaffNavId && setting is SSButton)
+        {
+            ShowStaff(player);
+            return;
+        }
 
         if (id == AcceptRulesId && setting is SSButton)
         {
-            if (SiteRpRulesRepository.HasAccepted(player)) { ShowJobs(player); return; }
+            if (SiteRpRulesRepository.HasAccepted(player))
+            {
+                ShowJobs(player);
+                return;
+            }
+
             int elapsed = (int)(DateTime.UtcNow - state.RulesOpenedAtUtc).TotalSeconds;
             if (elapsed < SiteRpRulesRepository.MinimumReadSeconds)
             {
                 Prompt(player, $"Lis le reglement avant d'accepter : encore {SiteRpRulesRepository.MinimumReadSeconds - elapsed}s minimum.");
                 return;
             }
+
             SiteRpRulesRepository.Accept(player);
             Prompt(player, "Reglement accepte et sauvegarde. Choisis maintenant ton metier dans M.", true);
             ShowJobs(player);
             return;
         }
 
-        if (id == CategoryId && setting is SSDropdownSetting category)
+        if (id == CategoryId && setting is SSDropdownSetting categoryDropdown)
         {
-            int next = Math.Clamp(category.SyncSelectionIndexValidated, 0, Math.Max(0, Categories.Count - 1));
+            int next = ClampIndex(categoryDropdown.SyncSelectionIndexValidated, Categories.Count);
             if (next == state.CategoryIndex)
                 return;
+
             state.CategoryIndex = next;
             state.SelectedRoleId = 0;
             ShowJobs(player);
@@ -295,19 +360,29 @@ public static class JobMenuManager
         if (JobsByDropdown.TryGetValue(id, out List<JobDefinition>? jobs) && setting is SSDropdownSetting jobDropdown)
         {
             if (jobs.Count > 0)
-                state.SelectedRoleId = jobs[Math.Clamp(jobDropdown.SyncSelectionIndexValidated, 0, jobs.Count - 1)].UcrRoleId;
+            {
+                int index = ClampIndex(jobDropdown.SyncSelectionIndexValidated, jobs.Count);
+                state.SelectedRoleId = jobs[index].UcrRoleId;
+            }
             return;
         }
 
         if (id == JoinJobId && setting is SSButton)
         {
-            if (!SiteRpRulesRepository.HasAccepted(player)) { ShowRules(player); return; }
+            if (!SiteRpRulesRepository.HasAccepted(player))
+            {
+                ShowRules(player);
+                return;
+            }
+
             if (state.SelectedRoleId <= 0)
             {
                 int dropdownId = FirstCategoryJobId + state.CategoryIndex;
-                List<JobDefinition> current = JobsByDropdown.GetValueOrDefault(dropdownId) ?? new();
-                if (current.Count > 0) state.SelectedRoleId = current[0].UcrRoleId;
+                List<JobDefinition> current = GetJobsForDropdown(dropdownId);
+                if (current.Count > 0)
+                    state.SelectedRoleId = current[0].UcrRoleId;
             }
+
             bool initial = !SiteRpInteractiveUi.IsDeployed(player);
             bool ok = JobRuntime.TryJoin(player, state.SelectedRoleId, out string response, initial);
             Prompt(player, response, ok);
@@ -328,25 +403,39 @@ public static class JobMenuManager
         if (!JobRuntime.IsStaff(player))
             return;
 
-        if (id == StaffTargetId && setting is SSDropdownSetting target)
+        if (id == StaffTargetId && setting is SSDropdownSetting targetDropdown)
         {
-            state.StaffTargetIndex = Math.Clamp(target.SyncSelectionIndexValidated, 0, Math.Max(0, StaffTargetIds.Count - 1));
+            state.StaffTargetIndex = ClampIndex(targetDropdown.SyncSelectionIndexValidated, StaffTargetIds.Count);
             return;
         }
-        if (id == StaffRoleId && setting is SSDropdownSetting role)
+
+        if (id == StaffRoleId && setting is SSDropdownSetting roleDropdownSetting)
         {
-            state.StaffRoleIndex = Math.Clamp(role.SyncSelectionIndexValidated, 0, Math.Max(0, StaffRoles.Count - 1));
+            state.StaffRoleIndex = ClampIndex(roleDropdownSetting.SyncSelectionIndexValidated, StaffRoles.Count);
             return;
         }
-        if (id == StaffRefreshId && setting is SSButton) { ShowStaff(player); return; }
+
+        if (id == StaffRefreshId && setting is SSButton)
+        {
+            ShowStaff(player);
+            return;
+        }
+
         if ((id == StaffGrantId || id == StaffRevokeId) && setting is SSButton)
         {
-            if (StaffTargetIds.Count == 0 || StaffRoles.Count == 0) { Prompt(player, "Joueur ou role introuvable."); return; }
-            string targetId = StaffTargetIds[Math.Clamp(state.StaffTargetIndex, 0, StaffTargetIds.Count - 1)];
-            JobDefinition role = StaffRoles[Math.Clamp(state.StaffRoleIndex, 0, StaffRoles.Count - 1)];
+            if (StaffTargetIds.Count == 0 || StaffRoles.Count == 0)
+            {
+                Prompt(player, "Joueur ou role introuvable.");
+                return;
+            }
+
+            string targetId = StaffTargetIds[ClampIndex(state.StaffTargetIndex, StaffTargetIds.Count)];
+            JobDefinition selectedRole = StaffRoles[ClampIndex(state.StaffRoleIndex, StaffRoles.Count)];
+
             bool changed = id == StaffGrantId
-                ? JobWhitelistRepository.Grant(targetId, role.UcrRoleId, $"{player.Nickname} ({JobRuntime.GetPersistentUserId(player)})")
-                : JobWhitelistRepository.Revoke(targetId, role.UcrRoleId);
+                ? JobWhitelistRepository.Grant(targetId, selectedRole.UcrRoleId, $"{player.Nickname} ({JobRuntime.GetPersistentUserId(player)})")
+                : JobWhitelistRepository.Revoke(targetId, selectedRole.UcrRoleId);
+
             Prompt(player, changed ? "Whitelist modifiee et sauvegardee." : "Aucun changement.", changed);
             ShowStaff(player);
         }
@@ -363,14 +452,36 @@ public static class JobMenuManager
         return state;
     }
 
-    private static string JobOption(JobDefinition job) =>
-        $"{job.UcrRoleId} — {job.Name} — {(job.AccessMode == JobAccessMode.Public ? "PUBLIC" : "WHITELIST")}";
+    private static List<JobDefinition> GetJobsForDropdown(int dropdownId)
+    {
+        return JobsByDropdown.TryGetValue(dropdownId, out List<JobDefinition>? jobs)
+            ? jobs
+            : new List<JobDefinition>();
+    }
+
+    private static int ClampIndex(int value, int count)
+    {
+        if (count <= 0)
+            return 0;
+        if (value < 0)
+            return 0;
+        return value >= count ? count - 1 : value;
+    }
+
+    private static string JobOption(JobDefinition job)
+    {
+        string access = job.AccessMode == JobAccessMode.Public ? "PUBLIC" : "WHITELIST";
+        return $"{job.UcrRoleId} — {job.Name} — {access}";
+    }
 
     private static string DescribeJob(Player player, JobDefinition job)
     {
         int current = JobRuntime.CountPlayersOnRole(job.UcrRoleId);
         string slots = job.MaxPlayers <= 0 ? $"{current}/∞" : $"{current}/{job.MaxPlayers}";
-        bool whitelisted = job.AccessMode != JobAccessMode.Whitelist || JobRuntime.IsStaff(player) || JobWhitelistRepository.IsWhitelisted(JobRuntime.GetPersistentUserId(player), job.UcrRoleId);
+        bool whitelisted = job.AccessMode != JobAccessMode.Whitelist ||
+                           JobRuntime.IsStaff(player) ||
+                           JobWhitelistRepository.IsWhitelisted(JobRuntime.GetPersistentUserId(player), job.UcrRoleId);
+
         string access = job.AccessMode switch
         {
             JobAccessMode.Public => "<color=#73D673>PUBLIC</color>",
@@ -378,17 +489,27 @@ public static class JobMenuManager
             JobAccessMode.Whitelist => "<color=#FF6B6B>ACCES RESERVE — WHITELIST REQUISE</color>",
             _ => "<color=#FF6B6B>STAFF UNIQUEMENT</color>",
         };
+
         string skin = string.IsNullOrWhiteSpace(job.WardrobeName) ? "Standard" : job.WardrobeName;
-        return $"<size=24><b>{Escape(job.Name)}</b></size>\n{Escape(job.Category)}\n\nAcces : {access}\nPlaces : <b>{slots}</b>\nSkin : <b>{Escape(skin)}</b>\n\n{Escape(job.Description)}";
+        return $"<size=24><b>{Escape(job.Name)}</b></size>\n{Escape(job.Category)}\n\n" +
+               $"Acces : {access}\nPlaces : <b>{slots}</b>\nSkin : <b>{Escape(skin)}</b>\n\n" +
+               Escape(job.Description);
     }
 
     private static void Prompt(Player player, string message, bool success = false)
     {
         string color = success ? "#73D673" : "#FFB84D";
-        player.SendHint($"<align=center><size=24><color={color}><b>SITERP</b></color></size>\n<size=18>{Escape(message)}</size>\n<size=15>Interface : touche <b>M</b> → Server Specific Settings.</size></align>", 6f);
+        player.SendHint(
+            $"<align=center><size=24><color={color}><b>SITERP</b></color></size>\n" +
+            $"<size=18>{Escape(message)}</size>\n" +
+            "<size=15>Interface : touche <b>M</b> → Server Specific Settings.</size></align>",
+            6f);
     }
 
-    private static string Escape(string text) => (text ?? string.Empty).Replace("<", "&lt;").Replace(">", "&gt;");
+    private static string Escape(string text)
+    {
+        return (text ?? string.Empty).Replace("<", "&lt;").Replace(">", "&gt;");
+    }
 
     private sealed class PlayerUiState
     {
