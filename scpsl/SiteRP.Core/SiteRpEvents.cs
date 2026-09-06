@@ -103,7 +103,7 @@ internal sealed class SiteRpEvents : CustomEventsHandler
         {
             ev.IsAllowed = false;
             ev.Player.SendBroadcast(
-                "<b><color=#62A8FF>SITERP</color></b>\nOuvre M → Server Specific Settings, accepte le règlement puis choisis ton métier.",
+                "<b><color=#62A8FF>SITERP — ENREGISTREMENT REQUIS</color></b>\nOuvre l'interface avec J ou .jobs, accepte le règlement puis choisis ton métier.",
                 4);
             return;
         }
@@ -135,8 +135,9 @@ internal sealed class SiteRpEvents : CustomEventsHandler
             SiteRpInteractiveUi.BeginArrival(player);
             player.SendBroadcast(
                 "<b><color=#62A8FF>SITERP — BIENVENUE</color></b>\n" +
-                "Ouvre <b>M → Server Specific Settings</b>.\n" +
-                "Règlement obligatoire puis choix du métier avant déploiement.\n" +
+                "L'interface d'admission s'affiche automatiquement.\n" +
+                "Règlement → choix du métier → déploiement.\n" +
+                "Raccourci: <b>J</b> (à confirmer une fois dans M → Server Specific Settings). Commande de secours: <b>.jobs</b>.\n" +
                 "La radio fonctionne normalement.",
                 12);
         });
