@@ -3,7 +3,7 @@ using System.Text;
 namespace SiteRP.Core.Jobs;
 
 /// <summary>
-/// Full-screen jobs overlay rendered with SCP:SL hints.
+/// Full-screen jobs overlay rendered through HintServiceMeow when available.
 /// It requires no client mod. Navigation is available through bindable .hud commands.
 /// </summary>
 public static class JobHudManager
@@ -33,11 +33,6 @@ public static class JobHudManager
         if (!SiteRpRulesRepository.HasAccepted(player))
         {
             SiteRpInteractiveUi.OpenRules(player, false);
-            player.SendHint(
-                "<align=center><size=30><color=#62A8FF><b>SITERP — REGLEMENT</b></color></size>\n" +
-                "<size=18>Le règlement doit être accepté avant le choix du métier.</size>\n" +
-                "<size=16>Utilise <b>.hud rules</b> ou la touche que tu as liée à cette commande.</size></align>",
-                8f);
             return;
         }
 
@@ -55,7 +50,7 @@ public static class JobHudManager
         if (States.TryGetValue(JobRuntime.GetPersistentUserId(player), out HudState? state))
             state.Open = false;
 
-        player.SendHint("<align=center><size=20><color=#AEB9C6>Menu métiers SiteRP fermé.</color></size></align>", 2f);
+        SiteRpHudRenderer.Hide(player);
     }
 
     public static void Cleanup(Player player)
@@ -63,6 +58,7 @@ public static class JobHudManager
         if (player is null)
             return;
         States.Remove(JobRuntime.GetPersistentUserId(player));
+        SiteRpHudRenderer.Cleanup(player);
     }
 
     public static bool PreviousJob(Player player, out string response)
@@ -168,10 +164,11 @@ public static class JobHudManager
         }
 
         state.Open = false;
+        SiteRpHudRenderer.Hide(player);
         if (initial)
             SiteRpInteractiveUi.MarkDeployed(player);
         else
-            player.SendHint($"<align=center><size=28><color=#73D673><b>{Escape(job.Name)}</b></color></size>\n<size=18>{Escape(response)}</size></align>", 6f);
+            player.SendBroadcast($"<b><color=#73D673>{Escape(job.Name)}</color></b>\n{Escape(response)}", 6);
         return true;
     }
 
@@ -196,7 +193,7 @@ public static class JobHudManager
 
         if (categories.Count == 0)
         {
-            player.SendHint("<align=center><size=26><color=#FF6961><b>SITERP — AUCUN METIER CHARGE</b></color></size></align>", 8f);
+            SiteRpHudRenderer.Show(player, "<align=center><size=26><color=#FF6961><b>SITERP — AUCUN METIER CHARGE</b></color></size></align>", 8f);
             return;
         }
 
@@ -204,7 +201,7 @@ public static class JobHudManager
         List<JobDefinition> jobs = JobsFor(category);
         if (jobs.Count == 0)
         {
-            player.SendHint("<align=center><size=26><color=#FFB84D><b>SITERP — CATEGORIE VIDE</b></color></size></align>", 8f);
+            SiteRpHudRenderer.Show(player, "<align=center><size=26><color=#FFB84D><b>SITERP — CATEGORIE VIDE</b></color></size></align>", 8f);
             return;
         }
 
@@ -212,8 +209,8 @@ public static class JobHudManager
         JobDefinition selected = jobs[state.JobIndex];
         StringBuilder sb = new();
 
-        sb.Append("<align=center><voffset=-310><size=31><color=#62A8FF><b>SITERP // AFFECTATION DU PERSONNEL</b></color></size>\n");
-        sb.Append("<size=17><color=#AEB9C6>HUD serveur — aucun téléchargement client requis</color></size>\n");
+        sb.Append("<align=center><size=31><color=#62A8FF><b>SITERP // AFFECTATION DU PERSONNEL</b></color></size>\n");
+        sb.Append("<size=17><color=#AEB9C6>HUD serveur — rendu HintServiceMeow</color></size>\n");
         sb.Append("<size=20><b>").Append(Escape(category)).Append("</b>  <color=#7E8A99>(")
             .Append(state.CategoryIndex + 1).Append('/').Append(categories.Count).Append(")</color></size>\n\n");
 
@@ -250,9 +247,9 @@ public static class JobHudManager
         sb.Append("\n<size=15><color=#8EA0B5>")
             .Append(".hud prev / next   •   .hud catprev / catnext   •   <b>.hud select</b>   •   .hud close")
             .Append("</color></size>\n");
-        sb.Append("<size=14><color=#647487>Les touches sont choisies par le joueur avec bind/cmdbind. M reste réservé à l'interface admin.</color></size></voffset></align>");
+        sb.Append("<size=14><color=#647487>Les touches sont choisies par le joueur avec bind/cmdbind. M reste réservé à l'interface admin.</color></size></align>");
 
-        player.SendHint(sb.ToString(), 25f);
+        SiteRpHudRenderer.Show(player, sb.ToString(), 30f);
     }
 
     private static HudState GetState(Player player)
