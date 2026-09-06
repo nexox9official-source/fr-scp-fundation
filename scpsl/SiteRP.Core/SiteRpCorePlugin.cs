@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using LabApi.Events.CustomHandlers;
 using LabApi.Features;
+using LabApi.Features.Permissions;
 using LabApi.Features.Wrappers;
 using LabApi.Loader.Features.Plugins;
 using PlayerRoles;
+using SiteRP.Core.Jobs;
 using UnityEngine;
 using LabLogger = LabApi.Features.Console.Logger;
 
@@ -14,9 +16,9 @@ namespace SiteRP.Core;
 public sealed class SiteRpCorePlugin : Plugin
 {
     public override string Name => "SiteRP.Core";
-    public override string Description => "Persistent SCP:SL DarkRP core: permanent round, per-SCP containment states, CASSIE/079 RP policy, operational facility, UCR jobs, staff mode and safe map tooling.";
+    public override string Description => "Persistent SCP:SL DarkRP core: permanent round, per-SCP containment states, CASSIE/079 RP policy, operational facility, persistent UCR jobs/whitelists, staff mode and safe map tooling.";
     public override string Author => "SiteRP";
-    public override Version Version => new(1, 0, 0);
+    public override Version Version => new(1, 1, 0);
     public override Version RequiredApiVersion { get; } = new(LabApiProperties.CompiledVersion);
 
     internal static SiteRpCorePlugin? Instance { get; private set; }
@@ -42,15 +44,22 @@ public sealed class SiteRpCorePlugin : Plugin
         CustomHandlersManager.RegisterEventsHandler(Events);
         SiteRpScp079Policy.Register();
 
+        // Adds SiteRP/SLWardrobe permissions to RA staff without replacing permissions.yml.
+        PermissionsManager.RegisterProvider<SiteRpPermissionProvider>();
+        JobMenuManager.Register();
+
         if (PermanentRoundEnabled)
             Round.IsLocked = true;
 
-        LabLogger.Info("[SiteRP.Core] v1.0.0 active - persistent DarkRP + per-SCP states + C.A.S.S.I.E./079 policy + RP jobs + STAFF.");
+        LabLogger.Info("[SiteRP.Core] v1.1.0 active - persistent DarkRP + jobs menu M + persistent whitelists + STAFF + custom skins bridge.");
+        LabLogger.Info("[SiteRP Jobs] RA staff automatically receive siterp.jobs.* and slwardrobe.* through SiteRpPermissionProvider.");
         LabLogger.Info("[SiteRP.SCP] Initial state: Site NORMAL; vanilla/custom SCP contained; C.A.S.S.I.E. cooperative.");
     }
 
     public override void Disable()
     {
+        JobMenuManager.Unregister();
+        PermissionsManager.UnregisterProvider<SiteRpPermissionProvider>();
         SiteRpScp079Policy.Unregister();
         CustomHandlersManager.UnregisterEventsHandler(Events);
         SiteRpOperationalMap.Remove();
@@ -131,9 +140,6 @@ public sealed class SiteRpCorePlugin : Plugin
 
         snapshot.Restoring = true;
         RestoreRoleFromSnapshot(player, snapshot);
-
-        // UCR KeepCurrentPositionSpawn finishes after the role-change event. Re-apply the
-        // stored RP position and moderation state once the UCR summon call has returned.
         RestoreStaffSnapshotImmediate(player, snapshot);
         StaffSnapshots.Remove(player.UserId);
 
@@ -183,8 +189,6 @@ public sealed class SiteRpCorePlugin : Plugin
 
     internal static void RestoreStaffSnapshotImmediate(Player player, StaffSnapshot snapshot)
     {
-        // When UCR restored a custom job, let UCR own the badge/name/custom-info again.
-        // For a vanilla job, restore the exact values that existed before staff mode.
         if (!snapshot.OriginalCustomRoleId.HasValue)
         {
             player.GroupName = snapshot.OriginalGroupName;
