@@ -181,8 +181,8 @@ public static class RulesHudManager
         if (!string.IsNullOrWhiteSpace(flash))
             sb.Append("<size=15><color=#FFB84D>").Append(Escape(flash)).Append("</color></size>\n");
 
-        sb.Append("\n<size=14><color=#8EA0B5>← / → ou ↑ / ↓ : pages  •  ENTRÉE : continuer / valider  •  RETOUR : fermer</color></size>\n");
-        sb.Append("<size=13><color=#647487>J : ouvrir / rafraîchir  •  secours : .jobs  •  admin/fallback : M → Server Specific Settings</color></size>");
+        sb.Append("\n<size=14><color=#8EA0B5>.hud prev / next : pages  •  .hud select : continuer / valider  •  .hud close : fermer</color></size>\n");
+        sb.Append("<size=13><color=#647487>Choisis librement tes touches avec bind/cmdbind. <b>M reste réservé à l'interface admin.</b></color></size>");
         sb.Append("</voffset></align>");
 
         player.SendHint(sb.ToString(), 30f);
