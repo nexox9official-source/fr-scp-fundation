@@ -4,6 +4,9 @@ namespace SiteRP.Core.Jobs;
 
 public static class JobRuntime
 {
+    public const int JobChangeCooldownSeconds = 60;
+    private static readonly Dictionary<string, DateTime> LastJobChanges = new(StringComparer.OrdinalIgnoreCase);
+
     public static string GetPersistentUserId(Player player)
     {
         string raw = player.UserId ?? string.Empty;
@@ -35,6 +38,19 @@ public static class JobRuntime
             || group.Equals("superadmin", StringComparison.OrdinalIgnoreCase);
     }
 
+    public static int GetRemainingCooldown(Player player)
+    {
+        if (player == null || IsStaff(player))
+            return 0;
+
+        string id = GetPersistentUserId(player);
+        if (!LastJobChanges.TryGetValue(id, out DateTime last))
+            return 0;
+
+        double remaining = JobChangeCooldownSeconds - (DateTime.UtcNow - last).TotalSeconds;
+        return remaining <= 0 ? 0 : (int)Math.Ceiling(remaining);
+    }
+
     public static int CountPlayersOnRole(int roleId)
     {
         int count = 0;
@@ -55,6 +71,19 @@ public static class JobRuntime
             return false;
         }
 
+        if (SiteRpUcrBridge.TryGetActiveRoleId(player, out int currentRole) && currentRole == job.UcrRoleId)
+        {
+            reason = "Tu occupes deja ce metier.";
+            return false;
+        }
+
+        int cooldown = GetRemainingCooldown(player);
+        if (cooldown > 0)
+        {
+            reason = $"Changement de metier en cooldown : encore {cooldown}s.";
+            return false;
+        }
+
         if (job.AccessMode == JobAccessMode.StaffOnly && !IsStaff(player))
         {
             reason = "Acces STAFF uniquement.";
@@ -72,8 +101,7 @@ public static class JobRuntime
         if (job.MaxPlayers > 0)
         {
             int occupied = CountPlayersOnRole(job.UcrRoleId);
-            bool alreadyOnRole = SiteRpUcrBridge.TryGetActiveRoleId(player, out int current) && current == job.UcrRoleId;
-            if (!alreadyOnRole && occupied >= job.MaxPlayers)
+            if (occupied >= job.MaxPlayers)
             {
                 reason = $"Role complet ({occupied}/{job.MaxPlayers}).";
                 return false;
@@ -101,7 +129,17 @@ public static class JobRuntime
             return false;
         }
 
-        response = $"Metier attribue: {job.Name}.";
+        if (!IsStaff(player))
+            LastJobChanges[GetPersistentUserId(player)] = DateTime.UtcNow;
+
+        string skin = string.IsNullOrWhiteSpace(job.WardrobeName) ? "apparence standard" : job.WardrobeName;
+        response = $"Metier attribue: {job.Name}. Tenue: {skin}. Cooldown: {JobChangeCooldownSeconds}s.";
         return true;
+    }
+
+    public static void CleanupPlayer(Player player)
+    {
+        // Deliberately keep the timestamp for the current server session so reconnecting
+        // cannot be used to bypass the RP job cooldown.
     }
 }
