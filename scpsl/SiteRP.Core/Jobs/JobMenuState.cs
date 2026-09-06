@@ -7,6 +7,7 @@ public enum SiteRpUiStage
     Categories,
     Jobs,
     StaffPlayers,
+    StaffCategories,
     StaffRoles,
 }
 
