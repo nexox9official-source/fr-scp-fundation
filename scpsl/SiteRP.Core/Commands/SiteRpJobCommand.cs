@@ -12,7 +12,7 @@ namespace SiteRP.Core.Commands;
 public sealed class SiteRpJobCommand : ICommand
 {
     public string Command => "siterpjob";
-    public string[] Aliases => new[] { "srjob", "jobsrp" };
+    public string[] Aliases => new[] { "srjob", "jobsrp", "job", "jobs", "metier", "metiers" };
     public string Description => "SiteRP Jobs: rejoindre un metier et gerer les whitelists persistantes.";
 
     public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
@@ -37,7 +37,7 @@ public sealed class SiteRpJobCommand : ICommand
 
             if (args.Length < 2 || !int.TryParse(args[1], out int roleId))
             {
-                response = "Usage: siterpjob join <roleId>";
+                response = "Usage: jobs join <roleId>";
                 return false;
             }
 
@@ -68,7 +68,7 @@ public sealed class SiteRpJobCommand : ICommand
         {
             JobWhitelistRepository.Load();
             JobMenuManager.Refresh();
-            response = "SiteRP Jobs recharge : whitelist + menu M actualises.";
+            response = "SiteRP Jobs recharge : whitelist + selecteur Server-Specific actualises.";
             return true;
         }
 
@@ -89,7 +89,7 @@ public sealed class SiteRpJobCommand : ICommand
         {
             if (args.Length < 4 || !int.TryParse(args[3], out int roleId))
             {
-                response = "Usage: siterpjob whitelist add <playerId|steamId64> <roleId>";
+                response = "Usage: jobs whitelist add <playerId|steamId64> <roleId>";
                 return false;
             }
 
@@ -118,7 +118,7 @@ public sealed class SiteRpJobCommand : ICommand
         {
             if (args.Length < 4 || !int.TryParse(args[3], out int roleId))
             {
-                response = "Usage: siterpjob whitelist remove <playerId|steamId64> <roleId>";
+                response = "Usage: jobs whitelist remove <playerId|steamId64> <roleId>";
                 return false;
             }
 
@@ -140,7 +140,7 @@ public sealed class SiteRpJobCommand : ICommand
         {
             if (args.Length < 3)
             {
-                response = "Usage: siterpjob whitelist player <playerId|steamId64>";
+                response = "Usage: jobs whitelist player <playerId|steamId64>";
                 return false;
             }
 
@@ -162,7 +162,7 @@ public sealed class SiteRpJobCommand : ICommand
         {
             if (args.Length < 3 || !int.TryParse(args[2], out int roleId))
             {
-                response = "Usage: siterpjob whitelist role <roleId>";
+                response = "Usage: jobs whitelist role <roleId>";
                 return false;
             }
 
@@ -180,7 +180,7 @@ public sealed class SiteRpJobCommand : ICommand
     private static bool HasManagementAccess(Player? player)
     {
         if (player is null)
-            return true; // server console
+            return true;
 
         return player.RemoteAdminAccess || player.HasPermission("siterp.jobs.manage");
     }
@@ -206,14 +206,14 @@ public sealed class SiteRpJobCommand : ICommand
     }
 
     private static string Help() =>
-        "SiteRP Jobs:\n" +
-        "siterpjob list\n" +
-        "siterpjob join <roleId>\n" +
-        "siterpjob whitelist add <playerId|steamId64> <roleId>\n" +
-        "siterpjob whitelist remove <playerId|steamId64> <roleId>\n" +
-        "siterpjob whitelist player <playerId|steamId64>\n" +
-        "siterpjob whitelist role <roleId>\n" +
-        "siterpjob reload";
+        "SiteRP Jobs (interface: Echap > Parametres > Server-Specific):\n" +
+        "jobs list\n" +
+        "jobs join <roleId>\n" +
+        "jobs whitelist add <playerId|steamId64> <roleId>\n" +
+        "jobs whitelist remove <playerId|steamId64> <roleId>\n" +
+        "jobs whitelist player <playerId|steamId64>\n" +
+        "jobs whitelist role <roleId>\n" +
+        "jobs reload";
 
     private static string WhitelistHelp() =>
         "Whitelist SiteRP: add, remove, player, role. Les changements sont sauvegardes immediatement.";
