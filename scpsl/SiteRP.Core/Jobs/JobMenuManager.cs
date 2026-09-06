@@ -3,8 +3,10 @@ using UserSettings.ServerSpecific;
 namespace SiteRP.Core.Jobs;
 
 /// <summary>
-/// Native SCP:SL Server-Specific Settings job selector (menu M).
-/// Each player receives a department-filtered view so the menu stays usable with 100+ UCR roles.
+/// Native SCP:SL Server-Specific Settings job selector.
+/// This is deliberately separate from the vanilla Remote Admin M panel: UCR roles are
+/// server plugin roles, not vanilla RoleTypeId entries, and therefore are not injected
+/// into Northwood's built-in RA role list.
 /// </summary>
 public static class JobMenuManager
 {
@@ -37,8 +39,6 @@ public static class JobMenuManager
         if (_categories.Length == 0)
             _categories = new[] { "AUCUN METIER" };
 
-        // Show only the first selected category immediately. Older builds displayed all
-        // 100+ roles on the first opening and only became filtered after changing category.
         _ownedSettings = CreateMenuSettings(0);
 
         ServerSpecificSettingBase[] existing = ServerSpecificSettingsSync.DefinedSettings ?? Array.Empty<ServerSpecificSettingBase>();
@@ -56,7 +56,7 @@ public static class JobMenuManager
         ServerSpecificSettingsSync.SendToAll();
 
         _registered = true;
-        Logger.Info($"[SiteRP Jobs] Menu M actif: {_menuJobs.Length} metiers, {_categories.Length} categories.");
+        Logger.Info($"[SiteRP Jobs] Selecteur Server-Specific actif: {_menuJobs.Length} metiers, {_categories.Length} categories, cooldown {JobRuntime.JobChangeCooldownSeconds}s.");
     }
 
     public static void Unregister()
@@ -101,11 +101,11 @@ public static class JobMenuManager
 
         return new ServerSpecificSettingBase[]
         {
-            new SSGroupHeader("SITERP — CHOIX DU METIER", false, "Choisis ton departement puis ton metier. Les roles reserves necessitent une whitelist persistante."),
+            new SSGroupHeader("SITERP — CHOIX DU METIER", false, $"Interface RP native. Choisis uniquement un metier auquel tu as acces. Changement: {JobRuntime.JobChangeCooldownSeconds}s de cooldown."),
             new SSDropdownSetting(CategoryDropdownId, "Departement / Unite", _categories, categoryIndex, SSDropdownSetting.DropdownEntryType.Hybrid, "Change de categorie pour filtrer la liste des metiers."),
-            new SSDropdownSetting(JobDropdownId, "Metier / Grade", jobOptions, 0, SSDropdownSetting.DropdownEntryType.Regular, "[PUBLIC] libre, [WL] whitelist, [STAFF] reserve a l'administration."),
+            new SSDropdownSetting(JobDropdownId, "Metier / Grade", jobOptions, 0, SSDropdownSetting.DropdownEntryType.Regular, "[PUBLIC] libre, [WL] whitelist persistante, [STAFF] administration uniquement."),
             new SSButton(InfoButtonId, "Informations", "VOIR ACCES / PLACES"),
-            new SSButton(JoinButtonId, "Rejoindre", "PRENDRE CE METIER", 0.75f, "Le serveur verifie whitelist, acces et places avant d'attribuer le role."),
+            new SSButton(JoinButtonId, "Changer de metier", "VALIDER LE METIER", 0.75f, $"Whitelist, places et cooldown {JobRuntime.JobChangeCooldownSeconds}s sont controles cote serveur."),
         };
     }
 
@@ -170,8 +170,6 @@ public static class JobMenuManager
             int categoryIndex = categorySetting.SyncSelectionIndexRaw;
             categoryIndex = Math.Max(0, Math.Min(categoryIndex, _categories.Length - 1));
 
-            // Do not resend if the client simply echoed the category currently displayed.
-            // This also prevents a SSS feedback storm with other plugins' settings.
             if (GetCategoryIndex(hub) != categoryIndex)
                 SendCustomizedMenu(hub, categoryIndex);
             else
@@ -212,7 +210,7 @@ public static class JobMenuManager
 
         bool ok = JobRuntime.TryJoin(player, job.UcrRoleId, out string response);
         string color = ok ? "green" : "red";
-        player.SendBroadcast($"<b><color={color}>SITERP JOBS</color></b>\n{response}", ok ? (ushort)5 : (ushort)7);
+        player.SendBroadcast($"<b><color={color}>SITERP METIERS</color></b>\n{response}", ok ? (ushort)5 : (ushort)7);
     }
 
     private static void SendJobInfo(Player player, JobDefinition job, ushort duration)
@@ -239,9 +237,14 @@ public static class JobMenuManager
                 break;
         }
 
+        int cooldown = JobRuntime.GetRemainingCooldown(player);
+        string cooldownText = cooldown > 0 ? $"<color=orange>{cooldown}s</color>" : "<color=green>pret</color>";
+        string skin = string.IsNullOrWhiteSpace(job.WardrobeName) ? "standard" : job.WardrobeName;
+
         player.SendBroadcast(
             $"<b>{job.Name}</b> <size=18>[ID {job.UcrRoleId}]</size>\n" +
             $"{job.Category} | Places: {slots} | {access}\n" +
+            $"Cooldown: {cooldownText} | Tenue: {skin}\n" +
             $"<size=18>{job.Description}</size>",
             duration);
     }
