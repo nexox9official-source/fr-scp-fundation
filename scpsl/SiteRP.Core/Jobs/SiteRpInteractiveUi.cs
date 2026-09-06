@@ -47,7 +47,7 @@ public static class SiteRpInteractiveUi
             if (SiteRpRulesRepository.HasAccepted(player))
                 JobHudManager.Open(player, "Choisis ton département puis ton métier.");
             else
-                RulesHudManager.Open(player, "Lis les pages du règlement puis valide avec Entrée.");
+                RulesHudManager.Open(player, "Lis les pages du règlement puis valide avec .hud select.");
         });
     }
 
@@ -86,15 +86,17 @@ public static class SiteRpInteractiveUi
     {
         if (player is null)
             return;
+
         DeployedPlayers.Add(JobRuntime.GetPersistentUserId(player));
         player.IsGodModeEnabled = false;
         player.IsNoclipEnabled = false;
         player.CustomInfo = string.Empty;
-        player.SendHint(
-            "<align=center><size=28><color=#73D673><b>DÉPLOIEMENT AUTORISÉ</b></color></size>\n" +
-            "<size=18>Ton rôle est actif et tu as été déployé sur la map.</size>\n" +
-            "<size=16>Le HUD métiers reste accessible avec <b>.hud</b> / <b>.jobs</b> ou la touche que tu as choisie.</size></align>",
-            7f);
+        SiteRpHudRenderer.Hide(player);
+        player.SendBroadcast(
+            "<b><color=#73D673>DÉPLOIEMENT AUTORISÉ</color></b>\n" +
+            "Ton rôle est actif et tu as été déployé sur la map.\n" +
+            "HUD métiers : .hud / .jobs ou la touche que tu as choisie.",
+            7);
     }
 
     public static void CleanupPlayer(Player player)
@@ -105,6 +107,7 @@ public static class SiteRpInteractiveUi
         RulesHudManager.Cleanup(player);
         JobHudManager.Cleanup(player);
         JobMenuManager.CleanupPlayer(player);
+        SiteRpHudRenderer.Cleanup(player);
     }
 
     public static void Close(Player player)
