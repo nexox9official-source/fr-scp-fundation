@@ -4,6 +4,7 @@ using LabApi.Events.Arguments.WarheadEvents;
 using LabApi.Events.CustomHandlers;
 using LabApi.Features.Wrappers;
 using MEC;
+using SiteRP.Core.Jobs;
 using LabLogger = LabApi.Features.Console.Logger;
 
 namespace SiteRP.Core;
@@ -122,6 +123,22 @@ internal sealed class SiteRpEvents : CustomEventsHandler
             3);
     }
 
+    public override void OnPlayerJoined(PlayerJoinedEventArgs ev)
+    {
+        Player player = ev.Player;
+        Timing.CallDelayed(4f, () =>
+        {
+            if (player is null || !player.IsReady)
+                return;
+
+            player.SendBroadcast(
+                "<b><color=#62A8FF>SITERP — METIERS</color></b>\n" +
+                "Choisis ton metier dans <b>Echap > Parametres > Server-Specific</b>.\n" +
+                $"Acces, whitelist, places et cooldown ({JobRuntime.JobChangeCooldownSeconds}s) sont verifies par le serveur.",
+                10);
+        });
+    }
+
     public override void OnPlayerChangedRole(PlayerChangedRoleEventArgs ev)
     {
         SiteRpCorePlugin.OnPlayerRoleChanged(ev.Player);
@@ -129,6 +146,7 @@ internal sealed class SiteRpEvents : CustomEventsHandler
 
     public override void OnPlayerLeft(PlayerLeftEventArgs ev)
     {
+        JobRuntime.CleanupPlayer(ev.Player);
         SiteRpCorePlugin.CleanupPlayer(ev.Player);
     }
 }
