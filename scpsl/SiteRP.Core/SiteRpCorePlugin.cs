@@ -16,9 +16,9 @@ namespace SiteRP.Core;
 public sealed class SiteRpCorePlugin : Plugin
 {
     public override string Name => "SiteRP.Core";
-    public override string Description => "Persistent SCP:SL DarkRP core: HSM-backed rules/jobs HUD, native customizable HUD controls, persistent UCR whitelists, SLWardrobe bridge, staff mode and operational facility.";
+    public override string Description => "Persistent SCP:SL SiteRP core: HSM admission/jobs HUD, native customizable controls, custom-team identity, SCP-079 cooperative gameplay, physical alarm controls, UCR whitelists, SLWardrobe and staff mode.";
     public override string Author => "SiteRP";
-    public override Version Version => new(1, 6, 3);
+    public override Version Version => new(1, 7, 0);
     public override Version RequiredApiVersion { get; } = new(LabApiProperties.CompiledVersion);
 
     internal static SiteRpCorePlugin? Instance { get; private set; }
@@ -50,12 +50,13 @@ public sealed class SiteRpCorePlugin : Plugin
 
         EnsurePermanentRoundStarted();
 
-        LabLogger.Info("[SiteRP.Core] v1.6.3 active - HSM HUD + native customizable controls + persistent UCR access + SLWardrobe + STAFF + Operational.");
+        LabLogger.Info("[SiteRP.Core] v1.7.0 active - HSM HUD + custom-team identity + SCP-079 RP gameplay + physical alarms + native controls.");
         LabLogger.Info("[SiteRP UI] HUD controls: suggested J toggle, arrows navigate, Enter validates. Players may customize these keys once; .hud commands are fallback only.");
         LabLogger.Info("[SiteRP UI] M never opens the SiteRP HUD and remains available for the server/native admin interface.");
-        LabLogger.Info("[SiteRP HUD] HintServiceMeow is used directly when available; vanilla SendHint is fallback only.");
+        LabLogger.Info("[SiteRP Teams] UCT members display their custom team name instead of the underlying vanilla role when the bridge is available.");
+        LabLogger.Info("[SiteRP.079] Cooperative protocol: normal doors/cameras/ping; emergency permissions scale with Site alarm; lethal systems remain hostile-only.");
+        LabLogger.Info("[SiteRP.Alarm] Physical NORMAL/INCIDENT/BREACH/MAJOR/EVAC controls are installed by SiteRP Operational.");
         LabLogger.Info("[SiteRP Jobs] Custom player roles deploy through their UCR spawn_settings. Radio remains vanilla.");
-        LabLogger.Info("[SiteRP.SCP] Initial state: Site NORMAL; vanilla/custom SCP contained; C.A.S.S.I.E. cooperative.");
     }
 
     public override void Disable()
