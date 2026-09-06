@@ -1,0 +1,1 @@
+Target approximately 35 visual families, with grade variants layered over shared unit identities. Keep assets lightweight and reusable.

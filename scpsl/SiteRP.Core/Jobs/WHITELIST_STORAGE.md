@@ -1,0 +1,1 @@
+Whitelist storage target: LabAPI per-port config directory under SiteRP. JSON/YAML acceptable; write atomically where possible.

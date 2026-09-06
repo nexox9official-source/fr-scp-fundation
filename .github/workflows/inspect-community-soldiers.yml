@@ -1,0 +1,62 @@
+name: Inspect community soldier assets
+
+on:
+  push:
+    branches:
+      - siterp-core-build
+    paths:
+      - '.github/workflows/inspect-community-soldiers.yml'
+  workflow_dispatch:
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install inspection tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y assimp-utils unzip p7zip-full
+
+      - name: Download CC0 community soldier candidates
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p out/raw out/extracted out/reports
+          curl -fL --retry 4 -A 'Mozilla/5.0' -o out/raw/modern-soldier.zip https://opengameart.org/sites/default/files/soldier.zip
+          curl -fL --retry 4 -A 'Mozilla/5.0' -o out/raw/low-poly-soldier.zip https://opengameart.org/sites/default/files/low_poly_soldier.zip
+          curl -fL --retry 4 -A 'Mozilla/5.0' -o out/raw/ww2-soldier.zip https://opengameart.org/sites/default/files/lowpolysoldier.zip
+          unzip -o out/raw/modern-soldier.zip -d out/extracted/modern || true
+          unzip -o out/raw/low-poly-soldier.zip -d out/extracted/lowpoly || true
+          unzip -o out/raw/ww2-soldier.zip -d out/extracted/ww2 || true
+
+      - name: Inspect hierarchy and geometry
+        shell: bash
+        run: |
+          set -euxo pipefail
+          find out/extracted -type f -printf '%p\n' | sort > out/reports/files.txt
+          : > out/reports/assimp-info.txt
+          while IFS= read -r f; do
+            case "${f,,}" in
+              *.obj|*.fbx|*.dae|*.3ds|*.blend)
+                echo "===== $f =====" >> out/reports/assimp-info.txt
+                timeout 45 assimp info "$f" >> out/reports/assimp-info.txt 2>&1 || true
+                ;;
+            esac
+          done < out/reports/files.txt
+
+          cat > out/reports/LICENSES.txt <<'EOF'
+          All three candidates below are selected from OpenGameArt pages marked CC0:
+          - Low Poly Modern Soldier (rigged), erik90mx / submitted by Anonymous
+            https://opengameart.org/content/low-poly-modern-soldier-rigged
+          - Low Poly Soldier with weapons, Casti_131
+            https://opengameart.org/content/low-poly-soldier-with-weapons
+          - Rigged Lowpoly WW2 Soldier, nisu
+            https://opengameart.org/content/rigged-lowpoly-ww2-soldier
+          EOF
+
+      - name: Upload inspection bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: SiteRP-Community-Soldier-Inspection
+          path: out/
+          if-no-files-found: error

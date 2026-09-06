@@ -1,0 +1,99 @@
+name: Build SiteRP.Core
+
+on:
+  push:
+    branches:
+      - siterp-core-build
+    paths:
+      - 'scpsl/SiteRP.Core/**'
+      - '.github/workflows/build-siterp-core.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'scpsl/SiteRP.Core/**'
+      - '.github/workflows/build-siterp-core.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDKs
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+
+      - name: Download SCP SL managed references
+        shell: pwsh
+        run: |
+          $builder = "$env:RUNNER_TEMP\SecretLabDependenciesBuilder"
+          git clone --depth 1 https://github.com/Jesus-QC/SecretLabDependenciesBuilder.git $builder
+          if ($LASTEXITCODE -ne 0) { throw "Unable to clone SecretLabDependenciesBuilder." }
+
+          @"
+          AssembliesToPublicize:
+          - Assembly-CSharp.dll
+          - Mirror.dll
+          ZipReferences: false
+          ReferencesZipName: References.zip
+          SaveReferencesToFolder: true
+          ReferencesFolderName: References
+          "@ | Set-Content -Path "$builder\config.yml" -Encoding utf8
+
+          # GitHub Actions has no interactive console buffer. Remove visual clears only.
+          $downloader = "$builder\SecretLabDependenciesBuilder\ServerDownloader.cs"
+          $source = Get-Content $downloader -Raw
+          $source = $source.Replace('Console.Clear();', '// Console.Clear disabled for CI;')
+          Set-Content -Path $downloader -Value $source -Encoding utf8
+
+          Push-Location $builder
+          try {
+            "`n`n" | dotnet run --project .\SecretLabDependenciesBuilder\SecretLabDependenciesBuilder.csproj -c Release
+            if ($LASTEXITCODE -ne 0) { throw "SecretLabDependenciesBuilder failed with exit code $LASTEXITCODE" }
+          }
+          finally {
+            Pop-Location
+          }
+
+          $refs = "$builder\References"
+          if (!(Test-Path "$refs\Assembly-CSharp.dll")) { throw "Assembly-CSharp.dll missing from downloaded references." }
+          if (!(Test-Path "$refs\LabAPI.dll")) { throw "LabAPI.dll missing from downloaded references." }
+
+          "SL_MANAGED=$refs" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "Using SCP SL references from $refs"
+
+      - name: Verify server references
+        shell: pwsh
+        run: |
+          $required = @(
+            'LabAPI.dll',
+            'Assembly-CSharp.dll',
+            'Assembly-CSharp-firstpass.dll',
+            'CommandSystem.Core.dll',
+            'Mirror.dll',
+            'NorthwoodLib.dll',
+            'Pooling.dll',
+            'UnityEngine.CoreModule.dll'
+          )
+          foreach ($dll in $required) {
+            if (!(Test-Path (Join-Path $env:SL_MANAGED $dll))) { throw "$dll not found in $env:SL_MANAGED" }
+          }
+
+      - name: Build SiteRP.Core
+        shell: pwsh
+        run: |
+          dotnet build "$env:GITHUB_WORKSPACE\scpsl\SiteRP.Core\SiteRP.Core.csproj" -c Release -p:SL_REFERENCES="$env:SL_MANAGED"
+
+      - name: Upload DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: SiteRP.Core
+          path: scpsl/SiteRP.Core/bin/Release/net48/SiteRP.Core.dll
+          if-no-files-found: error

@@ -1,0 +1,1 @@
+Implementation proceeds in SiteRP.Core v0.7; this file exists only to keep the design notes grouped.

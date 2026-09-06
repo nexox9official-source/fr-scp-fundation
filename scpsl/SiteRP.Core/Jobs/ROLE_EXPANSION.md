@@ -1,0 +1,1 @@
+Local RP roles to add: RAISA Director/Agent, Intelligence Director/Agent, CCTV Operator, Security Dispatcher, Detention Supervisor/Officer, Quartermaster, Supply Officer, Fire/Rescue, Local CBRN, MTF Coordinator, Foundation Liaison, Site Inspector/Auditor.

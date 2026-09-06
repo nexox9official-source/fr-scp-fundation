@@ -1,0 +1,46 @@
+name: Package SLWardrobe dependency
+
+on:
+  push:
+    branches:
+      - siterp-core-build
+    paths:
+      - '.github/workflows/package-slwardrobe.yml'
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download SLWardrobe LabAPI 1.8.0
+        run: |
+          set -euxo pipefail
+          mkdir -p out/LabAPI/plugins/22373
+          mkdir -p out/THIRD_PARTY_SOURCE
+          curl -fL --retry 3 \
+            -o out/LabAPI/plugins/22373/SLWardrobe.dll \
+            https://github.com/ChochoZagorski/SLWardrobe/releases/download/v1.8.0-LabAPI/SLWardrobe.dll
+          curl -fL --retry 3 \
+            -o out/THIRD_PARTY_SOURCE/SLWardrobe-v1.8.0-LabAPI-source.zip \
+            https://github.com/ChochoZagorski/SLWardrobe/archive/refs/tags/v1.8.0-LabAPI.zip
+          curl -fL --retry 3 \
+            -o out/THIRD_PARTY_SOURCE/SLWardrobe-LICENSE \
+            https://raw.githubusercontent.com/ChochoZagorski/SLWardrobe/v1.8.0-LabAPI/LICENSE
+          sha256sum out/LabAPI/plugins/22373/SLWardrobe.dll > out/SLWardrobe.sha256
+
+      - name: Add dependency notes
+        run: |
+          cat > out/SLWardrobe-README.txt <<'EOF'
+          SLWardrobe 1.8.0 - LabAPI build
+          Original project: ChochoZagorski/SLWardrobe
+          Release tag: v1.8.0-LabAPI
+          This dependency is packaged together with its corresponding source archive and license.
+          ProjectMER remains a separate dependency; SiteRP already uses ProjectMER 2026.7.6.1.
+          EOF
+
+      - name: Upload dependency bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: SiteRP-SLWardrobe-1.8.0-LabAPI
+          path: out/
+          if-no-files-found: error

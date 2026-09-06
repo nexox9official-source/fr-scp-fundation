@@ -1,0 +1,79 @@
+name: Apply SiteRP v1.7.6 SCP-079 max-tier patch
+
+on:
+  push:
+    branches: [siterp-core-build]
+    paths:
+      - '.github/workflows/apply-siterp-v176-079.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: siterp-core-build
+          fetch-depth: 0
+
+      - name: Patch SCP-079 gameplay
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p = Path('scpsl/SiteRP.Core/SiteRpScp079Policy.cs')
+          s = p.read_text()
+          if 'using PlayerRoles.PlayableScps.Scp079;' not in s:
+              s = s.replace('using LabApi.Features.Wrappers;\n', 'using LabApi.Features.Wrappers;\nusing PlayerRoles.PlayableScps.Scp079;\n')
+
+          marker = '    public static void ShowProtocol(Player player)\n'
+          if 'public static bool ApplyMaxLevel' not in s:
+              method = '''    public static bool ApplyMaxLevel(Player player, out string result)\n    {\n        result = string.Empty;\n        if (player is null || !player.IsReady || player.RoleBase is not Scp079Role role)\n        {\n            result = "SCP-079 introuvable ou role pas encore initialise.";\n            return false;\n        }\n\n        if (!role.SubroutineModule.TryGetSubroutine(out Scp079TierManager tier))\n        {\n            result = "Scp079TierManager indisponible.";\n            return false;\n        }\n\n        if (tier.AbsoluteThresholds is null || tier.AbsoluteThresholds.Length == 0)\n        {\n            result = "Seuils de niveau SCP-079 indisponibles.";\n            return false;\n        }\n\n        // Use the last threshold exposed by the running SCP:SL build instead of hardcoding a tier.\n        // This automatically tracks Northwood changes to SCP-079 progression.\n        tier.TotalExp = tier.AbsoluteThresholds[tier.AbsoluteThresholds.Length - 1];\n\n        if (role.SubroutineModule.TryGetSubroutine(out Scp079AuxManager aux))\n            aux.CurrentAux = aux.MaxAux;\n\n        string auxText = role.SubroutineModule.TryGetSubroutine(out Scp079AuxManager statusAux)\n            ? $" | AUX {statusAux.CurrentAuxFloored}/{statusAux.MaxAux:0}"\n            : string.Empty;\n\n        result = $"SCP-079 initialise au niveau maximum disponible (Tier {tier.AccessTierLevel}){auxText}.";\n        LabLogger.Info($"[SiteRP.079] {player.Nickname}: {result}");\n        return true;\n    }\n\n    public static string DescribeLiveStats(Player player)\n    {\n        if (player is null || player.RoleBase is not Scp079Role role)\n            return "Niveau/AUX indisponibles";\n\n        string tierText = role.SubroutineModule.TryGetSubroutine(out Scp079TierManager tier)\n            ? $"Tier {tier.AccessTierLevel}"\n            : "Tier ?";\n        string auxText = role.SubroutineModule.TryGetSubroutine(out Scp079AuxManager aux)\n            ? $"AUX {aux.CurrentAuxFloored}/{aux.MaxAux:0}"\n            : "AUX ?";\n        return $"{tierText} | {auxText}";\n    }\n\n'''
+              s = s.replace(marker, method + marker)
+
+          s = s.replace(
+              '            SiteRpScpStateManager.Describe079Permissions() + "\\n" +\n            "NORMAL: cameras, ping, ouverture/fermeture. INCIDENT: unlock urgence. BREACH: verrouillage. MAJOR/EVAC: lockdown. Tesla/blackout: uniquement HOSTILE/BREACHED.",',
+              '            SiteRpScpStateManager.Describe079Permissions() + "\\n" +\n            DescribeLiveStats(player) + "\\n" +\n            "NORMAL: cameras, ping, ouverture/fermeture. INCIDENT: unlock urgence. BREACH: verrouillage. MAJOR/EVAC: lockdown. Tesla/blackout: uniquement HOSTILE/BREACHED.",')
+          p.write_text(s)
+
+          p = Path('scpsl/SiteRP.Core/SiteRpEvents.cs')
+          s = p.read_text()
+          old = '''        if (ev.Player.Role == RoleTypeId.Scp079)\n            Timing.CallDelayed(1f, () => SiteRpScp079Policy.ShowProtocol(ev.Player));'''
+          new = '''        if (ev.Player.Role == RoleTypeId.Scp079)\n        {\n            Timing.CallDelayed(1f, () =>\n            {\n                if (ev.Player is null || !ev.Player.IsReady || ev.Player.Role != RoleTypeId.Scp079)\n                    return;\n\n                SiteRpScp079Policy.ApplyMaxLevel(ev.Player, out _);\n                SiteRpScp079Policy.ShowProtocol(ev.Player);\n            });\n        }'''
+          if old not in s:
+              raise SystemExit('079 role-change block not found')
+          s = s.replace(old, new)
+          p.write_text(s)
+
+          p = Path('scpsl/SiteRP.Core/Commands/SiteRpScpCommand.cs')
+          s = p.read_text()
+          if 'using PlayerRoles;' not in s:
+              s = s.replace('using LabApi.Features.Wrappers;\n', 'using LabApi.Features.Wrappers;\nusing PlayerRoles;\n')
+          needle = '''        string mode = Arg(arguments, 1).ToLowerInvariant();\n        string state = mode switch'''
+          insert = '''        string mode = Arg(arguments, 1).ToLowerInvariant();\n        if (mode is "max" or "boost" or "levelmax" or "tiermax")\n        {\n            Player? scp079 = Player.ReadyList.FirstOrDefault(x => x.Role == RoleTypeId.Scp079);\n            if (scp079 is null)\n            {\n                response = "Aucun joueur SCP-079 actif.";\n                return false;\n            }\n\n            return SiteRpScp079Policy.ApplyMaxLevel(scp079, out response);\n        }\n\n        string state = mode switch'''
+          if needle not in s:
+              raise SystemExit('079 command mode block not found')
+          s = s.replace(needle, insert)
+          s = s.replace('siterpscp 079 status|cassie|test|compromised|hostile|disabled|contained|recontained', 'siterpscp 079 status|max|cassie|test|compromised|hostile|disabled|contained|recontained')
+          p.write_text(s)
+
+          p = Path('scpsl/SiteRP.Core/SiteRpCorePlugin.cs')
+          s = p.read_text().replace('public override Version Version => new(1, 7, 5);', 'public override Version Version => new(1, 7, 6);')
+          s = s.replace('v1.7.5 active', 'v1.7.6 active')
+          s = s.replace('[SiteRP.079] Cooperative protocol: normal doors/cameras/ping; emergency permissions scale with Site alarm; lethal systems remain hostile-only.', '[SiteRP.079] Max tier + full AUX on role assignment; cooperative doors/cameras/ping; emergency permissions scale with Site alarm; lethal systems remain hostile-only.')
+          p.write_text(s)
+
+          p = Path('scpsl/SiteRP.Core/SiteRP.Core.csproj')
+          s = p.read_text().replace('<Version>1.7.5</Version>', '<Version>1.7.6</Version>')
+          p.write_text(s)
+
+      - name: Commit v1.7.6 source
+        run: |
+          git config user.name 'SiteRP Build Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add scpsl/SiteRP.Core
+          git commit -m 'Improve SCP-079 with automatic max tier and full AUX'
+          git push origin HEAD:siterp-core-build

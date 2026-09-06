@@ -1,0 +1,259 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using LabApi.Events.CustomHandlers;
+using LabApi.Features;
+using LabApi.Features.Permissions;
+using LabApi.Features.Wrappers;
+using LabApi.Loader.Features.Plugins;
+using PlayerRoles;
+using SiteRP.Core.Jobs;
+using UnityEngine;
+using LabLogger = LabApi.Features.Console.Logger;
+
+namespace SiteRP.Core;
+
+public sealed class SiteRpCorePlugin : Plugin
+{
+    public override string Name => "SiteRP.Core";
+    public override string Description => "Persistent SCP:SL SiteRP core: HSM admission/jobs HUD, native customizable controls, curated optional community SLWardrobe suits with vanilla fallback, custom-team identity, SCP-079 cooperative gameplay, physical alarm controls, UCR whitelists and staff mode.";
+    public override string Author => "SiteRP";
+    public override Version Version => new(1, 7, 6);
+    public override Version RequiredApiVersion { get; } = new(LabApiProperties.CompiledVersion);
+
+    internal static SiteRpCorePlugin? Instance { get; private set; }
+    internal SiteRpEvents Events { get; } = new();
+    internal SiteRpSite76Events Site76Events { get; } = new();
+
+    public static bool PermanentRoundEnabled { get; set; } = true;
+    public static bool ContainmentLocked { get; set; } = true;
+    public static bool BlockAutomaticWaves { get; set; } = true;
+    public static bool BlockDecontamination { get; set; } = true;
+    public static bool BlockWarhead { get; set; } = true;
+    public static bool BlockEscapes { get; set; } = true;
+    public static bool CleanDecorativeRagdolls { get; set; } = true;
+    public static bool BlockBloodDecals { get; set; } = true;
+    public static bool AutomaticMapAudit { get; set; } = false;
+    public static bool OperationalMapEnabled { get; set; } = false;
+
+    internal static Dictionary<string, StaffSnapshot> StaffSnapshots { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public override void Enable()
+    {
+        Instance = this;
+        SiteRpScpStateManager.Reset();
+        CustomHandlersManager.RegisterEventsHandler(Events);
+        CustomHandlersManager.RegisterEventsHandler(Site76Events);
+        SiteRpScp079Policy.Register();
+
+        PermissionsManager.RegisterProvider<SiteRpPermissionProvider>();
+        JobMenuManager.Register();
+        JobHudKeybindManager.Register();
+
+        // Round.Start is intentionally delayed until the facility/map exists.
+        LabLogger.Info("[SiteRP.Core] v1.7.6 active - Site-76 community map + official Site-76 spawns + vanilla-safe role appearance + HSM HUD + custom-team identity + SCP-079 gameplay + physical alarms.");
+        LabLogger.Info("[SiteRP UI] HUD controls: suggested J toggle, arrows navigate, Enter validates. Players may customize these keys once; .hud commands are fallback only.");
+        LabLogger.Info("[SiteRP UI] M never opens the SiteRP HUD and remains available for the server/native admin interface.");
+        LabLogger.Info("[SiteRP Skins] Community suits are opt-in and curated only. Any UCR role without a verified community suit keeps its native SCP:SL model.");
+        LabLogger.Info("[SiteRP Teams] UCT members display their custom team name instead of the underlying vanilla role when the bridge is available.");
+        LabLogger.Info("[SiteRP.079] Max tier + full AUX on role assignment; cooperative doors/cameras/ping; emergency permissions scale with Site alarm; lethal systems remain hostile-only.");
+        LabLogger.Info("[SiteRP.Alarm] Physical NORMAL/INCIDENT/BREACH/MAJOR/EVAC controls are installed beside the Site-76 command Map System.");
+        LabLogger.Info("[SiteRP Jobs] Custom player roles deploy through their UCR spawn_settings. Radio remains vanilla.");
+    }
+
+    public override void Disable()
+    {
+        JobHudKeybindManager.Unregister();
+        JobMenuManager.Unregister();
+        PermissionsManager.UnregisterProvider<SiteRpPermissionProvider>();
+        SiteRpScp079Policy.Unregister();
+        CustomHandlersManager.UnregisterEventsHandler(Site76Events);
+        CustomHandlersManager.UnregisterEventsHandler(Events);
+        SiteRpSite76Panel.Remove();
+        SiteRpOperationalMap.Remove();
+
+        foreach (Player player in Player.ReadyList)
+        {
+            SiteRpInteractiveUi.CleanupPlayer(player);
+
+            if (!StaffSnapshots.TryGetValue(player.UserId, out StaffSnapshot snapshot))
+                continue;
+
+            RestoreRoleFromSnapshot(player, snapshot);
+            RestoreStaffSnapshotImmediate(player, snapshot);
+        }
+
+        StaffSnapshots.Clear();
+        Round.IsLocked = false;
+        Instance = null;
+        LabLogger.Info("[SiteRP.Core] disabled.");
+    }
+
+    internal static void EnsurePermanentRoundStarted()
+    {
+        if (!PermanentRoundEnabled)
+            return;
+
+        try
+        {
+            Round.KeepRoundOnOne = true;
+            Round.IsLocked = true;
+
+            if (!Round.IsRoundStarted)
+            {
+                Round.Start();
+                LabLogger.Info("[SiteRP.Round] ForceRoundStart demande pour maintenir le Site actif meme avec 0/1 joueur.");
+            }
+        }
+        catch (Exception ex)
+        {
+            LabLogger.Warn($"[SiteRP.Round] Demarrage permanent reporte: {ex.GetBaseException().Message}");
+        }
+    }
+
+    internal static int CleanupDecorativeRagdolls(string phase)
+    {
+        if (!CleanDecorativeRagdolls)
+            return 0;
+
+        Ragdoll[] ragdolls = Ragdoll.List.ToArray();
+        foreach (Ragdoll ragdoll in ragdolls)
+        {
+            if (!ragdoll.IsDestroyed)
+                ragdoll.Destroy();
+        }
+
+        LabLogger.Info($"[SiteRP.Clean] {phase}: removed {ragdolls.Length} pre-existing network ragdoll(s). Static vanilla decorations are handled by SiteRP Operational.");
+        return ragdolls.Length;
+    }
+
+    public static bool IsStaffMode(Player player) =>
+        StaffSnapshots.TryGetValue(player.UserId, out StaffSnapshot snapshot) && !snapshot.Restoring;
+
+    public static bool EnterStaffMode(Player player, out string response)
+    {
+        if (StaffSnapshots.ContainsKey(player.UserId))
+        {
+            response = "Tu es deja en mode staff.";
+            return false;
+        }
+
+        StaffSnapshot snapshot = new()
+        {
+            OriginalRole = player.Role,
+            OriginalCustomRoleId = SiteRpUcrBridge.GetCurrentRoleId(player),
+            OriginalPosition = player.Position,
+            OriginalGroupName = player.GroupName,
+            OriginalGroupColor = player.GroupColor,
+            OriginalCustomInfo = player.CustomInfo,
+            OriginalDisplayName = player.DisplayName,
+            OriginalGodMode = player.IsGodModeEnabled,
+            OriginalNoclip = player.IsNoclipEnabled,
+        };
+
+        StaffSnapshots[player.UserId] = snapshot;
+
+        if (!SiteRpUcrBridge.TrySpawnRole(player, SiteRpUcrBridge.StaffRoleId))
+        {
+            player.SetRole(RoleTypeId.Tutorial);
+            SiteRpSkinBridge.ApplyForRole(player, SiteRpUcrBridge.StaffRoleId);
+        }
+
+        response = snapshot.OriginalCustomRoleId.HasValue
+            ? $"Mode staff active. Role RP UCR {snapshot.OriginalCustomRoleId.Value} sauvegarde."
+            : "Mode staff active.";
+        return true;
+    }
+
+    public static bool ExitStaffMode(Player player, out string response)
+    {
+        if (!StaffSnapshots.TryGetValue(player.UserId, out StaffSnapshot snapshot))
+        {
+            response = "Tu n'es pas en mode staff.";
+            return false;
+        }
+
+        snapshot.Restoring = true;
+        RestoreRoleFromSnapshot(player, snapshot);
+        RestoreStaffSnapshotImmediate(player, snapshot);
+        StaffSnapshots.Remove(player.UserId);
+
+        response = snapshot.OriginalCustomRoleId.HasValue
+            ? $"Mode staff desactive. Retour au role RP UCR {snapshot.OriginalCustomRoleId.Value}."
+            : "Mode staff desactive. Retour a ton role RP.";
+        return true;
+    }
+
+    internal static void OnPlayerRoleChanged(Player player)
+    {
+        if (!StaffSnapshots.TryGetValue(player.UserId, out StaffSnapshot snapshot))
+            return;
+
+        if (snapshot.Restoring)
+        {
+            RestoreStaffSnapshotImmediate(player, snapshot);
+            return;
+        }
+
+        if (player.Role == RoleTypeId.Tutorial)
+            ApplyStaffAppearance(player, snapshot.OriginalPosition);
+    }
+
+    internal static void ApplyStaffAppearance(Player player, Vector3 position)
+    {
+        player.GroupName = "STAFF";
+        player.GroupColor = "red";
+        player.CustomInfo = "STAFF | HORS-RP | MODERATION";
+        player.IsGodModeEnabled = true;
+        player.IsNoclipEnabled = true;
+        player.Position = position;
+        player.SendBroadcast("<b><color=red>MODE STAFF</color></b>\nTu es hors RP. Retape .staff pour revenir a ton metier.", 6);
+    }
+
+    private static void RestoreRoleFromSnapshot(Player player, StaffSnapshot snapshot)
+    {
+        if (snapshot.OriginalCustomRoleId.HasValue &&
+            SiteRpUcrBridge.TrySpawnRole(player, snapshot.OriginalCustomRoleId.Value))
+        {
+            return;
+        }
+
+        SiteRpUcrBridge.ClearCustomRole(player);
+        player.SetRole(snapshot.OriginalRole);
+    }
+
+    internal static void RestoreStaffSnapshotImmediate(Player player, StaffSnapshot snapshot)
+    {
+        if (!snapshot.OriginalCustomRoleId.HasValue)
+        {
+            player.GroupName = snapshot.OriginalGroupName;
+            player.GroupColor = snapshot.OriginalGroupColor;
+            player.CustomInfo = snapshot.OriginalCustomInfo;
+            player.DisplayName = snapshot.OriginalDisplayName;
+        }
+
+        player.IsGodModeEnabled = snapshot.OriginalGodMode;
+        player.IsNoclipEnabled = snapshot.OriginalNoclip;
+        player.Position = snapshot.OriginalPosition;
+    }
+
+    internal static void CleanupPlayer(Player player)
+    {
+        SiteRpSkinBridge.RemoveSuit(player);
+        StaffSnapshots.Remove(player.UserId);
+    }
+}
+
+internal sealed class StaffSnapshot
+{
+    public RoleTypeId OriginalRole { get; set; }
+    public int? OriginalCustomRoleId { get; set; }
+    public Vector3 OriginalPosition { get; set; }
+    public string OriginalGroupName { get; set; } = string.Empty;
+    public string OriginalGroupColor { get; set; } = string.Empty;
+    public string OriginalCustomInfo { get; set; } = string.Empty;
+    public string OriginalDisplayName { get; set; } = string.Empty;
+    public bool OriginalGodMode { get; set; }
+    public bool OriginalNoclip { get; set; }
+    public bool Restoring { get; set; }
+}

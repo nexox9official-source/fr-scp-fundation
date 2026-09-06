@@ -1,0 +1,1 @@
+SiteRP.Core v1.7.6 — SCP-079 max-tier/full-AUX build validation.

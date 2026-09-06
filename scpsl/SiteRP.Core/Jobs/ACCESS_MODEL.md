@@ -1,0 +1,1 @@
+Access modes: Public, Whitelist, StaffOnly. Slots and persistent SteamID64 grants. Admin changes must persist immediately.
