@@ -37,6 +37,7 @@ public static class JobMenuManager
                 "Menu SiteRP / Retour",
                 KeyCode.J,
                 true,
+                true,
                 "Touche conseillée: J. Ouvre/ferme le menu métiers et sert de retour dans l'interface."),
         };
 
