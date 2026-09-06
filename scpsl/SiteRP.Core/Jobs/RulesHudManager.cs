@@ -4,7 +4,8 @@ namespace SiteRP.Core.Jobs;
 
 /// <summary>
 /// Mandatory SiteRP rules overlay rendered through HintServiceMeow when available.
-/// No client mod is required.
+/// No client mod is required. Normal navigation uses native customizable keybinds;
+/// .hud commands remain available only as fallback/debug controls.
 /// </summary>
 public static class RulesHudManager
 {
@@ -103,7 +104,7 @@ public static class RulesHudManager
         {
             state.PageIndex++;
             response = $"Page {state.PageIndex + 1}/{pageCount}.";
-            Render(player, state, "Continue la lecture. Utilise .hud select pour passer à la page suivante.");
+            Render(player, state, "Continue la lecture puis valide avec Entrée.");
             return true;
         }
 
@@ -171,19 +172,20 @@ public static class RulesHudManager
         sb.Append("<size=18><color=#DCE6F2>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</color></size>\n");
 
         if (accepted)
-            sb.Append("<size=16><color=#73D673><b>✓ Règlement déjà accepté.</b> .hud select ouvre les métiers.</color></size>\n");
+            sb.Append("<size=16><color=#73D673><b>✓ Règlement déjà accepté.</b> ENTRÉE ouvre les métiers.</color></size>\n");
         else if (!last)
-            sb.Append("<size=16><color=#62A8FF><b>.hud select</b> : page suivante</color></size>\n");
+            sb.Append("<size=16><color=#62A8FF><b>ENTRÉE</b> : page suivante</color></size>\n");
         else if (remaining > 0)
             sb.Append("<size=16><color=#FFB84D>Dernière page — lecture minimum: encore <b>").Append(remaining).Append("s</b>.</color></size>\n");
         else
-            sb.Append("<size=17><color=#73D673><b>.hud select : J'ACCEPTE LE RÈGLEMENT</b></color></size>\n");
+            sb.Append("<size=17><color=#73D673><b>ENTRÉE : J'ACCEPTE LE RÈGLEMENT</b></color></size>\n");
 
         if (!string.IsNullOrWhiteSpace(flash))
             sb.Append("<size=15><color=#FFB84D>").Append(Escape(flash)).Append("</color></size>\n");
 
-        sb.Append("\n<size=14><color=#8EA0B5>.hud prev / next : pages  •  .hud select : continuer / valider  •  .hud close : fermer</color></size>\n");
-        sb.Append("<size=13><color=#647487>Choisis librement tes touches avec bind/cmdbind. <b>M reste réservé à l'interface admin.</b></color></size>");
+        sb.Append("\n<size=16><color=#8EA0B5><b>↑ / ↓ / ← / →</b> changer de page   •   <b>ENTRÉE</b> continuer / valider</color></size>\n");
+        sb.Append("<size=14><color=#647487><b>J</b> ouvrir / fermer — touches personnalisables une seule fois dans Server-Specific Settings.</color></size>\n");
+        sb.Append("<size=13><color=#536171>.hud reste disponible uniquement en secours. M ne sert jamais à ouvrir le HUD SiteRP.</color></size>");
         sb.Append("</align>");
 
         SiteRpHudRenderer.Show(player, sb.ToString(), 30f);
