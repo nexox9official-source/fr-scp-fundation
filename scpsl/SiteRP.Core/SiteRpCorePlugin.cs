@@ -16,9 +16,9 @@ namespace SiteRP.Core;
 public sealed class SiteRpCorePlugin : Plugin
 {
     public override string Name => "SiteRP.Core";
-    public override string Description => "Persistent SCP:SL DarkRP core: HSM-backed rules/jobs HUD, player-selectable binds, persistent UCR whitelists, SLWardrobe bridge, staff mode and operational facility.";
+    public override string Description => "Persistent SCP:SL DarkRP core: HSM-backed rules/jobs HUD, native customizable HUD controls, persistent UCR whitelists, SLWardrobe bridge, staff mode and operational facility.";
     public override string Author => "SiteRP";
-    public override Version Version => new(1, 6, 2);
+    public override Version Version => new(1, 6, 3);
     public override Version RequiredApiVersion { get; } = new(LabApiProperties.CompiledVersion);
 
     internal static SiteRpCorePlugin? Instance { get; private set; }
@@ -50,8 +50,9 @@ public sealed class SiteRpCorePlugin : Plugin
 
         EnsurePermanentRoundStarted();
 
-        LabLogger.Info("[SiteRP.Core] v1.6.2 active - HSM-backed rules/jobs HUD + player-selectable binds + persistent UCR access + SLWardrobe + STAFF + Operational.");
-        LabLogger.Info("[SiteRP UI] M is untouched/reserved for the native admin interface. Player HUD: .hud / .jobs / .rules; keys are chosen with bind/cmdbind.");
+        LabLogger.Info("[SiteRP.Core] v1.6.3 active - HSM HUD + native customizable controls + persistent UCR access + SLWardrobe + STAFF + Operational.");
+        LabLogger.Info("[SiteRP UI] HUD controls: suggested J toggle, arrows navigate, Enter validates. Players may customize these keys once; .hud commands are fallback only.");
+        LabLogger.Info("[SiteRP UI] M never opens the SiteRP HUD and remains available for the server/native admin interface.");
         LabLogger.Info("[SiteRP HUD] HintServiceMeow is used directly when available; vanilla SendHint is fallback only.");
         LabLogger.Info("[SiteRP Jobs] Custom player roles deploy through their UCR spawn_settings. Radio remains vanilla.");
         LabLogger.Info("[SiteRP.SCP] Initial state: Site NORMAL; vanilla/custom SCP contained; C.A.S.S.I.E. cooperative.");
