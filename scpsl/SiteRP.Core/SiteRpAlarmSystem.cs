@@ -1,4 +1,5 @@
 using LabApi.Features.Wrappers;
+using SiteRP.Core.Jobs;
 
 namespace SiteRP.Core;
 
@@ -53,7 +54,7 @@ internal static class SiteRpAlarmSystem
 
     public static bool CanOperate(Player player)
     {
-        if (SiteRpCorePlugin.IsStaffMode(player) || player.IsNorthwoodStaff)
+        if (JobRuntime.IsStaff(player) || SiteRpCorePlugin.IsStaffMode(player))
             return true;
 
         if (!SiteRpUcrBridge.TryGetActiveRoleId(player, out int id))
