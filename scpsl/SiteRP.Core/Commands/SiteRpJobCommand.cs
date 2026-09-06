@@ -13,7 +13,7 @@ public sealed class SiteRpJobCommand : ICommand
 {
     public string Command => "siterpjob";
     public string[] Aliases => new[] { "srjob", "jobsrp", "job", "jobs", "metier", "metiers" };
-    public string Description => "SiteRP Jobs: ouvrir l'interface, rejoindre un metier et gerer les whitelists persistantes.";
+    public string Description => "SiteRP Jobs: ouvrir l'interface native M, rejoindre un metier et gerer les whitelists persistantes.";
 
     public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
     {
@@ -29,7 +29,7 @@ public sealed class SiteRpJobCommand : ICommand
             }
 
             SiteRpInteractiveUi.OpenJobs(actor);
-            response = "Interface SiteRP ouverte. PORTÉE radio = suivant, ON/OFF = valider, J = retour.";
+            response = "Interface SiteRP envoyee. Ouvre M -> Server Specific Settings -> METIERS.";
             return true;
         }
 
@@ -44,7 +44,7 @@ public sealed class SiteRpJobCommand : ICommand
             }
 
             SiteRpInteractiveUi.OpenJobs(actor);
-            response = "Interface SiteRP ouverte.";
+            response = "Interface SiteRP envoyee. Ouvre M -> Server Specific Settings.";
             return true;
         }
 
@@ -59,7 +59,7 @@ public sealed class SiteRpJobCommand : ICommand
             if (!SiteRpRulesRepository.HasAccepted(actor))
             {
                 SiteRpInteractiveUi.OpenRules(actor, false);
-                response = "Accepte d'abord le reglement SiteRP.";
+                response = "Accepte d'abord le reglement dans M -> Server Specific Settings.";
                 return false;
             }
 
@@ -100,7 +100,7 @@ public sealed class SiteRpJobCommand : ICommand
         {
             JobWhitelistRepository.Load();
             JobMenuManager.Refresh();
-            response = "SiteRP recharge : roles, whitelists, regles et raccourci interface actualises.";
+            response = "SiteRP recharge : roles, whitelists, regles et interface native M actualises.";
             return true;
         }
 
@@ -238,9 +238,9 @@ public sealed class SiteRpJobCommand : ICommand
     }
 
     private static string Help() =>
-        "SiteRP Jobs (interface en jeu):\n" +
-        "jobs / jobs menu = ouvrir l'interface\n" +
-        "Navigation: PORTÉE radio = suivant, ON/OFF = valider, J = retour\n" +
+        "SiteRP Jobs (interface native SCP:SL):\n" +
+        "Interface: M -> Server Specific Settings\n" +
+        "jobs / jobs menu = envoyer/actualiser la page Metiers\n" +
         "jobs list\n" +
         "jobs join <roleId>\n" +
         "jobs whitelist add <playerId|steamId64> <roleId>\n" +
@@ -250,5 +250,5 @@ public sealed class SiteRpJobCommand : ICommand
         "jobs reload";
 
     private static string WhitelistHelp() =>
-        "Whitelist SiteRP: gestion directement dans le menu staff ou commandes add, remove, player, role. Sauvegarde immediate.";
+        "Whitelist SiteRP: gestion dans M -> Server Specific Settings -> WHITELISTS STAFF, ou commandes add/remove/player/role. Sauvegarde immediate.";
 }
