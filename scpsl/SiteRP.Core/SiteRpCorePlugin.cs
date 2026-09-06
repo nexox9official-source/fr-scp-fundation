@@ -16,9 +16,9 @@ namespace SiteRP.Core;
 public sealed class SiteRpCorePlugin : Plugin
 {
     public override string Name => "SiteRP.Core";
-    public override string Description => "Persistent SCP:SL DarkRP core: permanent round, per-SCP containment states, CASSIE/079 RP policy, operational facility, persistent UCR jobs/whitelists, staff mode and safe map tooling.";
+    public override string Description => "Persistent SCP:SL DarkRP core: permanent round, per-SCP containment states, CASSIE/079 RP policy, operational facility, persistent UCR jobs/whitelists, native Server-Specific jobs UI, staff mode and SLWardrobe bridge.";
     public override string Author => "SiteRP";
-    public override Version Version => new(1, 1, 1);
+    public override Version Version => new(1, 2, 0);
     public override Version RequiredApiVersion { get; } = new(LabApiProperties.CompiledVersion);
 
     internal static SiteRpCorePlugin? Instance { get; private set; }
@@ -51,7 +51,8 @@ public sealed class SiteRpCorePlugin : Plugin
         if (PermanentRoundEnabled)
             Round.IsLocked = true;
 
-        LabLogger.Info("[SiteRP.Core] v1.1.1 active - persistent DarkRP + jobs menu M + persistent whitelists + STAFF + custom skins bridge + Operational timing hotfix.");
+        LabLogger.Info("[SiteRP.Core] v1.2.0 active - persistent DarkRP + Server-Specific jobs UI + 60s job cooldown + persistent whitelists + direct LabAPI SLWardrobe bridge + STAFF + Operational.");
+        LabLogger.Info("[SiteRP Jobs] Player UI: Echap > Parametres > Server-Specific. The vanilla Remote Admin M panel is not replaced.");
         LabLogger.Info("[SiteRP Jobs] RA staff automatically receive siterp.jobs.* and slwardrobe.* through SiteRpPermissionProvider.");
         LabLogger.Info("[SiteRP.SCP] Initial state: Site NORMAL; vanilla/custom SCP contained; C.A.S.S.I.E. cooperative.");
     }
@@ -122,7 +123,10 @@ public sealed class SiteRpCorePlugin : Plugin
         StaffSnapshots[player.UserId] = snapshot;
 
         if (!SiteRpUcrBridge.TrySpawnRole(player, SiteRpUcrBridge.StaffRoleId))
+        {
             player.SetRole(RoleTypeId.Tutorial);
+            SiteRpSkinBridge.ApplyForRole(player, SiteRpUcrBridge.StaffRoleId);
+        }
 
         response = snapshot.OriginalCustomRoleId.HasValue
             ? $"Mode staff active. Role RP UCR {snapshot.OriginalCustomRoleId.Value} sauvegarde."
@@ -204,6 +208,7 @@ public sealed class SiteRpCorePlugin : Plugin
 
     internal static void CleanupPlayer(Player player)
     {
+        SiteRpSkinBridge.RemoveSuit(player);
         StaffSnapshots.Remove(player.UserId);
     }
 }
