@@ -16,6 +16,8 @@ using LabLogger = LabApi.Features.Console.Logger;
 
 namespace SiteRP.Core;
 
+// v1.7.3 final build trigger: Site-76 map, official spawns and command panel integration.
+
 /// <summary>
 /// Site-76 specific physical SiteRP controls.
 /// Coordinates are anchored beside Site-76's original Map System / command display,
