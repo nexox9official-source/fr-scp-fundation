@@ -4,8 +4,7 @@ namespace SiteRP.Core.Jobs;
 
 /// <summary>
 /// Full-screen jobs overlay rendered with SCP:SL hints.
-/// It requires no client mod. Navigation is available through the jobs command;
-/// the native Server-Specific Settings page remains a fallback for mouse controls.
+/// It requires no client mod. Navigation is available through bindable .hud commands.
 /// </summary>
 public static class JobHudManager
 {
@@ -37,7 +36,7 @@ public static class JobHudManager
             player.SendHint(
                 "<align=center><size=30><color=#62A8FF><b>SITERP — REGLEMENT</b></color></size>\n" +
                 "<size=18>Le règlement doit être accepté avant le choix du métier.</size>\n" +
-                "<size=16>Ouvre <b>M → Server Specific Settings → REGLEMENT</b>.</size></align>",
+                "<size=16>Utilise <b>.hud rules</b> ou la touche que tu as liée à cette commande.</size></align>",
                 8f);
             return;
         }
@@ -249,9 +248,9 @@ public static class JobHudManager
             sb.Append("\n<size=17><color=#FFB84D>").Append(Escape(flash)).Append("</color></size>\n");
 
         sb.Append("\n<size=15><color=#8EA0B5>")
-            .Append(".jobs prev / next   •   .jobs catprev / catnext   •   <b>.jobs select</b>   •   .jobs close")
+            .Append(".hud prev / next   •   .hud catprev / catnext   •   <b>.hud select</b>   •   .hud close")
             .Append("</color></size>\n");
-        sb.Append("<size=14><color=#647487>Fallback souris/admin: M → Server Specific Settings</color></size></voffset></align>");
+        sb.Append("<size=14><color=#647487>Les touches sont choisies par le joueur avec bind/cmdbind. M reste réservé à l'interface admin.</color></size></voffset></align>");
 
         player.SendHint(sb.ToString(), 25f);
     }
