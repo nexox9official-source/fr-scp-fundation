@@ -4,8 +4,8 @@ using UserSettings.ServerSpecific;
 namespace SiteRP.Core.Jobs;
 
 /// <summary>
-/// Optional native SCP:SL keybinds for the jobs HUD. The game intentionally requires
-/// each player to confirm/assign the suggested keys once for privacy reasons.
+/// Native SCP:SL keybinds for the SiteRP onboarding/jobs HUD. The game requires
+/// each player to confirm/assign suggested keys once.
 /// </summary>
 public static class JobHudKeybindManager
 {
@@ -29,15 +29,15 @@ public static class JobHudKeybindManager
         _existing = ServerSpecificSettingsSync.DefinedSettings ?? Array.Empty<ServerSpecificSettingBase>();
         _owned = new ServerSpecificSettingBase[]
         {
-            new SSGroupHeader("SITERP — RACCOURCIS HUD METIERS", false,
-                "A configurer une seule fois. SCP:SL demande au joueur de confirmer les touches pour proteger sa vie privee."),
-            new SSKeybindSetting(OpenId, "SITERP: ouvrir / rafraichir le HUD metiers", KeyCode.J, true),
-            new SSKeybindSetting(PreviousJobId, "SITERP: metier precedent", KeyCode.LeftArrow, true),
-            new SSKeybindSetting(NextJobId, "SITERP: metier suivant", KeyCode.RightArrow, true),
-            new SSKeybindSetting(PreviousCategoryId, "SITERP: departement precedent", KeyCode.UpArrow, true),
-            new SSKeybindSetting(NextCategoryId, "SITERP: departement suivant", KeyCode.DownArrow, true),
-            new SSKeybindSetting(SelectId, "SITERP: choisir / rejoindre le metier", KeyCode.Return, true),
-            new SSKeybindSetting(CloseId, "SITERP: fermer le HUD", KeyCode.Backspace, true),
+            new SSGroupHeader("SITERP — RACCOURCIS INTERFACE RP", false,
+                "A configurer une seule fois. J ouvre le règlement si nécessaire, puis le choix des métiers."),
+            new SSKeybindSetting(OpenId, "SITERP: ouvrir / rafraichir l'interface", KeyCode.J, true),
+            new SSKeybindSetting(PreviousJobId, "SITERP: précédent", KeyCode.LeftArrow, true),
+            new SSKeybindSetting(NextJobId, "SITERP: suivant", KeyCode.RightArrow, true),
+            new SSKeybindSetting(PreviousCategoryId, "SITERP: département/page précédent", KeyCode.UpArrow, true),
+            new SSKeybindSetting(NextCategoryId, "SITERP: département/page suivant", KeyCode.DownArrow, true),
+            new SSKeybindSetting(SelectId, "SITERP: continuer / choisir", KeyCode.Return, true),
+            new SSKeybindSetting(CloseId, "SITERP: fermer l'interface", KeyCode.Backspace, true),
         };
 
         ServerSpecificSettingsSync.DefinedSettings = _existing.Concat(_owned).ToArray();
@@ -46,7 +46,7 @@ public static class JobHudKeybindManager
         ServerSpecificSettingsSync.SendToAll();
         _registered = true;
 
-        Logger.Info("[SiteRP HUD] Raccourcis natifs enregistres: J, fleches, Entree, Retour arriere (touches suggerees, confirmation joueur requise).");
+        Logger.Info("[SiteRP HUD] Raccourcis natifs enregistrés: J, flèches, Entrée, Retour arrière.");
     }
 
     public static void Unregister()
@@ -73,33 +73,51 @@ public static class JobHudKeybindManager
         if (player is null || !player.IsReady)
             return;
 
+        bool rulesOpen = RulesHudManager.IsOpen(player);
+        bool jobsOpen = JobHudManager.IsOpen(player);
+
         switch (setting.SettingId)
         {
             case OpenId:
-                JobHudManager.Open(player);
+                if (SiteRpRulesRepository.HasAccepted(player))
+                    JobHudManager.Open(player);
+                else
+                    RulesHudManager.Open(player);
                 break;
             case PreviousJobId:
-                if (JobHudManager.IsOpen(player))
+                if (rulesOpen)
+                    RulesHudManager.Previous(player, out _);
+                else if (jobsOpen)
                     JobHudManager.PreviousJob(player, out _);
                 break;
             case NextJobId:
-                if (JobHudManager.IsOpen(player))
+                if (rulesOpen)
+                    RulesHudManager.Next(player, out _);
+                else if (jobsOpen)
                     JobHudManager.NextJob(player, out _);
                 break;
             case PreviousCategoryId:
-                if (JobHudManager.IsOpen(player))
+                if (rulesOpen)
+                    RulesHudManager.Previous(player, out _);
+                else if (jobsOpen)
                     JobHudManager.PreviousCategory(player, out _);
                 break;
             case NextCategoryId:
-                if (JobHudManager.IsOpen(player))
+                if (rulesOpen)
+                    RulesHudManager.Next(player, out _);
+                else if (jobsOpen)
                     JobHudManager.NextCategory(player, out _);
                 break;
             case SelectId:
-                if (JobHudManager.IsOpen(player))
+                if (rulesOpen)
+                    RulesHudManager.Select(player, out _);
+                else if (jobsOpen)
                     JobHudManager.Select(player, out _);
                 break;
             case CloseId:
-                if (JobHudManager.IsOpen(player))
+                if (rulesOpen)
+                    RulesHudManager.Close(player);
+                else if (jobsOpen)
                     JobHudManager.Close(player);
                 break;
         }
