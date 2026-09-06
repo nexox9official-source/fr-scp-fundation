@@ -1,0 +1,1 @@
+Use SCP:SL Server-Specific Settings menu M for job browsing/selection and staff whitelist controls where permissions allow.
