@@ -7,8 +7,8 @@ namespace SiteRP.Core;
 
 /// <summary>
 /// RP policy layer for SCP-079 / C.A.S.S.I.E.
-/// The vanilla 079 interface remains intact, but dangerous facility actions are gated by
-/// SiteRP's persistent SCP state so 079 can exist as a cooperative Foundation AI.
+/// Cameras, pings and normal door operation are Foundation-support gameplay.
+/// Emergency locks scale with the Site alert; blackouts/Tesla remain hostile-only.
 /// </summary>
 internal static class SiteRpScp079Policy
 {
@@ -31,7 +31,7 @@ internal static class SiteRpScp079Policy
         Scp079Events.Recontained += OnRecontained;
 
         _registered = true;
-        LabLogger.Info("[SiteRP.079] RP policy registered.");
+        LabLogger.Info("[SiteRP.079] RP policy registered: cooperative door/camera support + alert-level emergency permissions.");
     }
 
     public static void Unregister()
@@ -53,13 +53,25 @@ internal static class SiteRpScp079Policy
         _registered = false;
     }
 
+    public static void ShowProtocol(Player player)
+    {
+        if (player is null || !player.IsReady)
+            return;
+
+        player.SendBroadcast(
+            "<b><color=#00B7EB>SITERP — C.A.S.S.I.E. / SCP-079</color></b>\n" +
+            SiteRpScpStateManager.Describe079Permissions() + "\n" +
+            "NORMAL: cameras, ping, ouverture/fermeture. INCIDENT: unlock urgence. BREACH: verrouillage. MAJOR/EVAC: lockdown. Tesla/blackout: uniquement HOSTILE/BREACHED.",
+            12);
+    }
+
     private static void OnBlackingOutRoom(Scp079BlackingOutRoomEventsArgs ev)
     {
         if (SiteRpScpStateManager.Can079UseHostileSystems)
             return;
 
         ev.IsAllowed = false;
-        Denied(ev.Player, "BLACKOUT refuse: C.A.S.S.I.E. n'est pas compromise.");
+        Denied(ev.Player, "BLACKOUT refuse: protocole lethal/hostile. Passage HOSTILE ou BREACHED requis.");
     }
 
     private static void OnBlackingOutZone(Scp079BlackingOutZoneEventArgs ev)
@@ -68,7 +80,7 @@ internal static class SiteRpScp079Policy
             return;
 
         ev.IsAllowed = false;
-        Denied(ev.Player, "BLACKOUT DE ZONE refuse: autorisation BREACHED/HOSTILE requise.");
+        Denied(ev.Player, "BLACKOUT DE ZONE refuse: C.A.S.S.I.E. cooperative ne coupe pas une zone entiere.");
     }
 
     private static void OnChangingCamera(Scp079ChangingCameraEventArgs ev)
@@ -82,29 +94,29 @@ internal static class SiteRpScp079Policy
 
     private static void OnLockingDoor(Scp079LockingDoorEventArgs ev)
     {
-        if (SiteRpScpStateManager.Can079UseHostileSystems)
+        if (SiteRpScpStateManager.Can079LockDoors)
             return;
 
         ev.IsAllowed = false;
-        Denied(ev.Player, "Verrouillage hostile refuse tant que l'IA Fondation est saine.");
+        Denied(ev.Player, "VERROUILLAGE refuse: alerte BREACH minimum pour C.A.S.S.I.E. cooperative.");
     }
 
     private static void OnUnlockingDoor(Scp079UnlockingDoorEventArgs ev)
     {
-        if (SiteRpScpStateManager.Can079UseFoundationSupport)
+        if (SiteRpScpStateManager.Can079UnlockDoors)
             return;
 
         ev.IsAllowed = false;
-        Denied(ev.Player, "Controle des portes indisponible: IA hors ligne.");
+        Denied(ev.Player, "DEVERROUILLAGE D'URGENCE refuse: alerte INCIDENT minimum.");
     }
 
     private static void OnLockingDownRoom(Scp079LockingDownRoomEventArgs ev)
     {
-        if (SiteRpScpStateManager.Can079UseHostileSystems)
+        if (SiteRpScpStateManager.Can079LockdownRooms)
             return;
 
         ev.IsAllowed = false;
-        Denied(ev.Player, "Lockdown hostile refuse: passage en BREACHED/HOSTILE requis.");
+        Denied(ev.Player, "LOCKDOWN refuse: MAJOR BREACH/EVACUATION minimum, sauf IA hostile.");
     }
 
     private static void OnUsingTesla(Scp079UsingTeslaEventArgs ev)
@@ -113,7 +125,7 @@ internal static class SiteRpScp079Policy
             return;
 
         ev.IsAllowed = false;
-        Denied(ev.Player, "Tesla refusee: protocole lethal interdit a C.A.S.S.I.E. saine.");
+        Denied(ev.Player, "TESLA refusee: protocole lethal interdit a C.A.S.S.I.E. cooperative.");
     }
 
     private static void OnPinging(Scp079PingingEventArgs ev)
@@ -139,6 +151,6 @@ internal static class SiteRpScp079Policy
 
     private static void Denied(Player? player, string message)
     {
-        player?.SendBroadcast($"<b><color=#00B7EB>SITERP IA</color></b>\n{message}", 3);
+        player?.SendBroadcast($"<b><color=#00B7EB>SITERP IA</color></b>\n{message}\n<color=#8EA0B5>{SiteRpScpStateManager.Describe079Permissions()}</color>", 4);
     }
 }
