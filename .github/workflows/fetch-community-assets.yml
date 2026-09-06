@@ -43,6 +43,9 @@ jobs:
             -o /tmp/site76lowdetailed.rar
           7z x -y /tmp/site76lowdetailed.rar -ointake/maps/site76
           curl -L --fail --retry 3 \
+            'https://github.com/MujisongPlay/ScpSite76Plugin/releases/download/Release/Site76.yml' \
+            -o intake/maps/site76/Site76-original.yml
+          curl -L --fail --retry 3 \
             'https://raw.githubusercontent.com/MujisongPlay/ScpSite76Plugin/main/README.md' \
             -o intake/maps/site76/SOURCE_README.md
           find intake/maps/site76 -maxdepth 5 -type f -print | sort
