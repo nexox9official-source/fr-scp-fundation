@@ -1,0 +1,72 @@
+name: Apply SiteRP v1.7.3 source integration
+
+on:
+  push:
+    branches:
+      - siterp-core-build
+    paths:
+      - '.github/workflows/apply-siterp-v173-source.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: siterp-core-build
+          fetch-depth: 0
+
+      - name: Patch SiteRP.Core to v1.7.3 Site-76 mode
+        shell: python
+        run: |
+          from pathlib import Path
+
+          core = Path('scpsl/SiteRP.Core/SiteRpCorePlugin.cs')
+          text = core.read_text(encoding='utf-8')
+          replacements = [
+              ('public override Version Version => new(1, 7, 2);',
+               'public override Version Version => new(1, 7, 3);'),
+              ('public static bool OperationalMapEnabled { get; set; } = true;',
+               'public static bool OperationalMapEnabled { get; set; } = false;'),
+              ('internal SiteRpEvents Events { get; } = new();',
+               'internal SiteRpEvents Events { get; } = new();\n    internal SiteRpSite76Events Site76Events { get; } = new();'),
+              ('CustomHandlersManager.RegisterEventsHandler(Events);\n        SiteRpScp079Policy.Register();',
+               'CustomHandlersManager.RegisterEventsHandler(Events);\n        CustomHandlersManager.RegisterEventsHandler(Site76Events);\n        SiteRpScp079Policy.Register();'),
+              ('[SiteRP.Core] v1.7.2 active - full custom morph per UCR role + HSM HUD + custom-team identity + SCP-079 gameplay + physical alarms.',
+               '[SiteRP.Core] v1.7.3 active - Site-76 community map + official Site-76 spawns + 140/140 community-derived morphs + HSM HUD + custom-team identity + SCP-079 gameplay + physical alarms.'),
+              ('Every loaded UCR job requests SiteRP_Role_<ID>; v1.7.2 morphs can hide the vanilla body and replace the visible silhouette with ProjectMER parts.',
+               'Every loaded UCR job requests SiteRP_Role_<ID>; v1.7.3 provides a community-derived ProjectMER/SLWardrobe morph for all 140 UCR jobs.'),
+              ('Physical NORMAL/INCIDENT/BREACH/MAJOR/EVAC controls are installed by SiteRP Operational.',
+               'Physical NORMAL/INCIDENT/BREACH/MAJOR/EVAC controls are installed beside the Site-76 command Map System.'),
+              ('SiteRpScp079Policy.Unregister();\n        CustomHandlersManager.UnregisterEventsHandler(Events);\n        SiteRpOperationalMap.Remove();',
+               'SiteRpScp079Policy.Unregister();\n        CustomHandlersManager.UnregisterEventsHandler(Site76Events);\n        CustomHandlersManager.UnregisterEventsHandler(Events);\n        SiteRpSite76Panel.Remove();\n        SiteRpOperationalMap.Remove();'),
+          ]
+          for old, new in replacements:
+              if old not in text:
+                  raise SystemExit(f'Missing expected SiteRpCorePlugin.cs marker: {old}')
+              text = text.replace(old, new, 1)
+          core.write_text(text, encoding='utf-8')
+
+          csproj = Path('scpsl/SiteRP.Core/SiteRP.Core.csproj')
+          project = csproj.read_text(encoding='utf-8')
+          old = '<Version>1.7.2</Version>'
+          if old not in project:
+              raise SystemExit('Missing expected csproj 1.7.2 version marker')
+          csproj.write_text(project.replace(old, '<Version>1.7.3</Version>', 1), encoding='utf-8')
+
+      - name: Commit patched sources
+        run: |
+          set -euxo pipefail
+          git config user.name 'SiteRP Build Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add scpsl/SiteRP.Core/SiteRpCorePlugin.cs scpsl/SiteRP.Core/SiteRP.Core.csproj
+          if git diff --cached --quiet; then
+            echo 'No source patch needed.'
+            exit 0
+          fi
+          git commit -m 'Finalize SiteRP.Core v1.7.3 Site-76 integration'
+          git push origin HEAD:siterp-core-build
