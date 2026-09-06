@@ -3,17 +3,21 @@ using UserSettings.ServerSpecific;
 namespace SiteRP.Core.Jobs;
 
 /// <summary>
-/// SiteRP job selector exposed in SCP:SL's Server-Specific Settings menu (M).
-/// It merges its entries with settings registered by other plugins (including SLWardrobe).
+/// Native SCP:SL Server-Specific Settings job selector (menu M).
+/// Each player receives a department-filtered view so the menu stays usable with 100+ UCR roles.
 /// </summary>
 public static class JobMenuManager
 {
-    private const int DropdownId = 771001;
+    private const int CategoryDropdownId = 771000;
+    private const int JobDropdownId = 771001;
     private const int JoinButtonId = 771002;
     private const int InfoButtonId = 771003;
 
     private static JobDefinition[] _menuJobs = Array.Empty<JobDefinition>();
+    private static string[] _categories = Array.Empty<string>();
     private static ServerSpecificSettingBase[] _ownedSettings = Array.Empty<ServerSpecificSettingBase>();
+    private static ServerSpecificSettingBase[] _foreignSettings = Array.Empty<ServerSpecificSettingBase>();
+    private static readonly Dictionary<ReferenceHub, int> PlayerCategoryIndexes = new();
     private static bool _registered;
 
     public static void Register()
@@ -25,27 +29,33 @@ public static class JobMenuManager
         JobCatalog.Reload();
         RebuildJobList();
 
-        string[] options = _menuJobs.Select(FormatOption).ToArray();
-        if (options.Length == 0)
-            options = new[] { "Aucun metier configure" };
+        _categories = _menuJobs.Select(x => x.Category)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
 
-        _ownedSettings = new ServerSpecificSettingBase[]
-        {
-            new SSGroupHeader("SITERP — CHOIX DU METIER", false, "Choisis ton metier RP. Les roles reserves necessitent une whitelist persistante."),
-            new SSDropdownSetting(DropdownId, "Metier", options, 0, SSDropdownSetting.DropdownEntryType.Regular, "[PUBLIC] libre, [WL] whitelist, [STAFF] reserve a l'administration."),
-            new SSButton(InfoButtonId, "Informations", "VOIR ACCES / PLACES"),
-            new SSButton(JoinButtonId, "Rejoindre", "PRENDRE CE METIER", 0.75f, "Le serveur verifie la whitelist et le nombre de places avant d'attribuer le role."),
-        };
+        if (_categories.Length == 0)
+            _categories = new[] { "AUCUN METIER" };
+
+        string[] allJobOptions = _menuJobs.Select(FormatOption).ToArray();
+        if (allJobOptions.Length == 0)
+            allJobOptions = new[] { "Aucun metier configure" };
+
+        _ownedSettings = CreateMenuSettings(0, allJobOptions);
 
         ServerSpecificSettingBase[] existing = ServerSpecificSettingsSync.DefinedSettings ?? Array.Empty<ServerSpecificSettingBase>();
-        existing = existing.Where(x => x.SettingId != DropdownId && x.SettingId != JoinButtonId && x.SettingId != InfoButtonId).ToArray();
-        ServerSpecificSettingsSync.DefinedSettings = existing.Concat(_ownedSettings).ToArray();
+        _foreignSettings = existing
+            .Where(x => x.SettingId != CategoryDropdownId && x.SettingId != JobDropdownId && x.SettingId != JoinButtonId && x.SettingId != InfoButtonId)
+            .ToArray();
+
+        ServerSpecificSettingsSync.DefinedSettings = _foreignSettings.Concat(_ownedSettings).ToArray();
         ServerSpecificSettingsSync.ServerOnSettingValueReceived += OnSettingValueReceived;
+        ServerSpecificSettingsSync.ServerOnStatusReceived += OnStatusReceived;
         ServerSpecificSettingsSync.Version = Math.Max(1, ServerSpecificSettingsSync.Version + 1);
         ServerSpecificSettingsSync.SendToAll();
 
         _registered = true;
-        Logger.Info($"[SiteRP Jobs] Menu M active: {_menuJobs.Length} metiers exposes.");
+        Logger.Info($"[SiteRP Jobs] Menu M actif: {_menuJobs.Length} metiers, {_categories.Length} categories.");
     }
 
     public static void Unregister()
@@ -54,16 +64,15 @@ public static class JobMenuManager
             return;
 
         ServerSpecificSettingsSync.ServerOnSettingValueReceived -= OnSettingValueReceived;
-        if (ServerSpecificSettingsSync.DefinedSettings is not null)
-        {
-            ServerSpecificSettingsSync.DefinedSettings = ServerSpecificSettingsSync.DefinedSettings
-                .Where(x => !_ownedSettings.Contains(x) && x.SettingId != DropdownId && x.SettingId != JoinButtonId && x.SettingId != InfoButtonId)
-                .ToArray();
-            ServerSpecificSettingsSync.Version = Math.Max(1, ServerSpecificSettingsSync.Version + 1);
-            ServerSpecificSettingsSync.SendToAll();
-        }
+        ServerSpecificSettingsSync.ServerOnStatusReceived -= OnStatusReceived;
+        PlayerCategoryIndexes.Clear();
+
+        ServerSpecificSettingsSync.DefinedSettings = _foreignSettings;
+        ServerSpecificSettingsSync.Version = Math.Max(1, ServerSpecificSettingsSync.Version + 1);
+        ServerSpecificSettingsSync.SendToAll();
 
         _ownedSettings = Array.Empty<ServerSpecificSettingBase>();
+        _foreignSettings = Array.Empty<ServerSpecificSettingBase>();
         _registered = false;
     }
 
@@ -78,21 +87,84 @@ public static class JobMenuManager
     {
         _menuJobs = JobCatalog.All
             .OrderBy(x => x.SortOrder)
-            .ThenBy(x => x.Category, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(x => x.UcrRoleId)
             .ToArray();
     }
 
-    private static string FormatOption(JobDefinition job)
+    private static ServerSpecificSettingBase[] CreateMenuSettings(int categoryIndex, string[]? forcedJobOptions = null)
     {
-        string access = job.AccessMode switch
+        categoryIndex = Math.Max(0, Math.Min(categoryIndex, _categories.Length - 1));
+        string category = _categories[categoryIndex];
+        JobDefinition[] jobs = GetJobsForCategory(categoryIndex);
+        string[] jobOptions = forcedJobOptions ?? jobs.Select(FormatJobOnly).ToArray();
+        if (jobOptions.Length == 0)
+            jobOptions = new[] { "Aucun metier dans cette categorie" };
+
+        return new ServerSpecificSettingBase[]
         {
-            JobAccessMode.Public => "PUBLIC",
-            JobAccessMode.Whitelist => "WL",
-            JobAccessMode.StaffOnly => "STAFF",
-            _ => "?",
+            new SSGroupHeader("SITERP — CHOIX DU METIER", false, "Choisis ton departement puis ton metier. Les roles reserves necessitent une whitelist persistante."),
+            new SSDropdownSetting(CategoryDropdownId, "Departement / Unite", _categories, categoryIndex, SSDropdownSetting.DropdownEntryType.Hybrid, "Change de categorie pour filtrer la liste des metiers."),
+            new SSDropdownSetting(JobDropdownId, "Metier / Grade", jobOptions, 0, SSDropdownSetting.DropdownEntryType.Regular, "[PUBLIC] libre, [WL] whitelist, [STAFF] reserve a l'administration."),
+            new SSButton(InfoButtonId, "Informations", "VOIR ACCES / PLACES"),
+            new SSButton(JoinButtonId, "Rejoindre", "PRENDRE CE METIER", 0.75f, "Le serveur verifie whitelist, acces et places avant d'attribuer le role."),
         };
-        return $"[{access}] [{job.Category}] {job.Name}";
+    }
+
+    private static string FormatOption(JobDefinition job) => $"[{AccessLabel(job)}] [{job.Category}] {job.Name}";
+    private static string FormatJobOnly(JobDefinition job) => $"[{AccessLabel(job)}] {job.Name}";
+
+    private static string AccessLabel(JobDefinition job) => job.AccessMode switch
+    {
+        JobAccessMode.Public => "PUBLIC",
+        JobAccessMode.Whitelist => "WL",
+        JobAccessMode.StaffOnly => "STAFF",
+        _ => "?",
+    };
+
+    private static JobDefinition[] GetJobsForCategory(int categoryIndex)
+    {
+        if (_categories.Length == 0)
+            return Array.Empty<JobDefinition>();
+
+        categoryIndex = Math.Max(0, Math.Min(categoryIndex, _categories.Length - 1));
+        string category = _categories[categoryIndex];
+        return _menuJobs.Where(x => string.Equals(x.Category, category, StringComparison.OrdinalIgnoreCase)).ToArray();
+    }
+
+    private static int GetCategoryIndex(ReferenceHub hub)
+    {
+        if (PlayerCategoryIndexes.TryGetValue(hub, out int index))
+            return Math.Max(0, Math.Min(index, _categories.Length - 1));
+        return 0;
+    }
+
+    private static JobDefinition? GetSelectedJob(ReferenceHub hub)
+    {
+        JobDefinition[] jobs = GetJobsForCategory(GetCategoryIndex(hub));
+        if (jobs.Length == 0)
+            return null;
+
+        SSDropdownSetting selected = ServerSpecificSettingsSync.GetSettingOfUser<SSDropdownSetting>(hub, JobDropdownId);
+        int index = selected.SyncSelectionIndexRaw;
+        if (index < 0 || index >= jobs.Length)
+            return jobs[0];
+        return jobs[index];
+    }
+
+    private static void SendCustomizedMenu(ReferenceHub hub, int categoryIndex)
+    {
+        if (!_registered || hub is null)
+            return;
+
+        PlayerCategoryIndexes[hub] = categoryIndex;
+        ServerSpecificSettingBase[] personalized = _foreignSettings.Concat(CreateMenuSettings(categoryIndex)).ToArray();
+        ServerSpecificSettingsSync.SendToPlayer(hub, personalized);
+    }
+
+    private static void OnStatusReceived(ReferenceHub hub, SSSUserStatusReport _)
+    {
+        // Status is sent when the Server-Specific tab is opened/closed. Re-send the player's filtered menu.
+        SendCustomizedMenu(hub, GetCategoryIndex(hub));
     }
 
     private static void OnSettingValueReceived(ReferenceHub hub, ServerSpecificSettingBase setting)
@@ -101,7 +173,15 @@ public static class JobMenuManager
         if (player is null || !player.IsReady)
             return;
 
-        if (setting.SettingId == DropdownId)
+        if (setting.SettingId == CategoryDropdownId && setting is SSDropdownSetting categorySetting)
+        {
+            int categoryIndex = categorySetting.SyncSelectionIndexRaw;
+            categoryIndex = Math.Max(0, Math.Min(categoryIndex, _categories.Length - 1));
+            SendCustomizedMenu(hub, categoryIndex);
+            return;
+        }
+
+        if (setting.SettingId == JobDropdownId)
         {
             JobDefinition? selected = GetSelectedJob(hub);
             if (selected is not null)
@@ -135,18 +215,6 @@ public static class JobMenuManager
         bool ok = JobRuntime.TryJoin(player, job.UcrRoleId, out string response);
         string color = ok ? "green" : "red";
         player.SendBroadcast($"<b><color={color}>SITERP JOBS</color></b>\n{response}", ok ? (ushort)5 : (ushort)7);
-    }
-
-    private static JobDefinition? GetSelectedJob(ReferenceHub hub)
-    {
-        if (_menuJobs.Length == 0)
-            return null;
-
-        SSDropdownSetting selected = ServerSpecificSettingsSync.GetSettingOfUser<SSDropdownSetting>(hub, DropdownId);
-        int index = selected.SyncSelectionIndexValidated;
-        if (index < 0 || index >= _menuJobs.Length)
-            return null;
-        return _menuJobs[index];
     }
 
     private static void SendJobInfo(Player player, JobDefinition job, ushort duration)
