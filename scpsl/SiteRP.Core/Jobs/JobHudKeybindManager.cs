@@ -31,8 +31,7 @@ public static class JobHudKeybindManager
         {
             new SSGroupHeader("SITERP — RACCOURCIS HUD METIERS", false,
                 "A configurer une seule fois. SCP:SL demande au joueur de confirmer les touches pour proteger sa vie privee."),
-            new SSKeybindSetting(OpenId, "SITERP: ouvrir / rafraichir le HUD metiers", KeyCode.J, true,
-                "Suggestion: J. Ouvre le HUD sans passer par le menu M."),
+            new SSKeybindSetting(OpenId, "SITERP: ouvrir / rafraichir le HUD metiers", KeyCode.J, true),
             new SSKeybindSetting(PreviousJobId, "SITERP: metier precedent", KeyCode.LeftArrow, true),
             new SSKeybindSetting(NextJobId, "SITERP: metier suivant", KeyCode.RightArrow, true),
             new SSKeybindSetting(PreviousCategoryId, "SITERP: departement precedent", KeyCode.UpArrow, true),
@@ -47,7 +46,7 @@ public static class JobHudKeybindManager
         ServerSpecificSettingsSync.SendToAll();
         _registered = true;
 
-        Logger.Info("[SiteRP HUD] Raccourcis natifs enregistres: J, fleches, Entree, Retour arriere (touches suggerees, confirmation joueur requise)." );
+        Logger.Info("[SiteRP HUD] Raccourcis natifs enregistres: J, fleches, Entree, Retour arriere (touches suggerees, confirmation joueur requise).");
     }
 
     public static void Unregister()
