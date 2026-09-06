@@ -4,7 +4,8 @@ namespace SiteRP.Core.Jobs;
 
 /// <summary>
 /// Full-screen jobs overlay rendered through HintServiceMeow when available.
-/// It requires no client mod. Navigation is available through bindable .hud commands.
+/// It requires no client mod. Normal navigation uses native customizable keybinds;
+/// .hud commands remain available only as fallback/debug controls.
 /// </summary>
 public static class JobHudManager
 {
@@ -244,10 +245,9 @@ public static class JobHudManager
         if (!string.IsNullOrWhiteSpace(flash))
             sb.Append("\n<size=17><color=#FFB84D>").Append(Escape(flash)).Append("</color></size>\n");
 
-        sb.Append("\n<size=15><color=#8EA0B5>")
-            .Append(".hud prev / next   •   .hud catprev / catnext   •   <b>.hud select</b>   •   .hud close")
-            .Append("</color></size>\n");
-        sb.Append("<size=14><color=#647487>Les touches sont choisies par le joueur avec bind/cmdbind. M reste réservé à l'interface admin.</color></size></align>");
+        sb.Append("\n<size=16><color=#8EA0B5><b>↑ / ↓</b> métier   •   <b>← / →</b> département   •   <b>ENTRÉE</b> choisir</color></size>\n");
+        sb.Append("<size=14><color=#647487><b>J</b> ouvrir / fermer — touches personnalisables une seule fois dans Server-Specific Settings.</color></size>\n");
+        sb.Append("<size=13><color=#536171>.hud reste disponible uniquement en secours. M ne sert jamais à ouvrir le HUD SiteRP.</color></size></align>");
 
         SiteRpHudRenderer.Show(player, sb.ToString(), 30f);
     }
