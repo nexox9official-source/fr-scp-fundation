@@ -16,9 +16,9 @@ namespace SiteRP.Core;
 public sealed class SiteRpCorePlugin : Plugin
 {
     public override string Name => "SiteRP.Core";
-    public override string Description => "Persistent SCP:SL DarkRP core: permanent round, per-SCP containment states, CASSIE/079 RP policy, operational facility, persistent UCR jobs/whitelists, native Server-Specific jobs UI, staff mode and SLWardrobe bridge.";
+    public override string Description => "Persistent SCP:SL DarkRP core: zero-player permanent round, mandatory rules/onboarding, interactive jobs UI, persistent UCR whitelists, SLWardrobe bridge, staff mode and operational facility.";
     public override string Author => "SiteRP";
-    public override Version Version => new(1, 2, 0);
+    public override Version Version => new(1, 3, 0);
     public override Version RequiredApiVersion { get; } = new(LabApiProperties.CompiledVersion);
 
     internal static SiteRpCorePlugin? Instance { get; private set; }
@@ -49,11 +49,14 @@ public sealed class SiteRpCorePlugin : Plugin
         JobMenuManager.Register();
 
         if (PermanentRoundEnabled)
+        {
+            Round.KeepRoundOnOne = true;
             Round.IsLocked = true;
+        }
 
-        LabLogger.Info("[SiteRP.Core] v1.2.0 active - persistent DarkRP + Server-Specific jobs UI + 60s job cooldown + persistent whitelists + direct LabAPI SLWardrobe bridge + STAFF + Operational.");
-        LabLogger.Info("[SiteRP Jobs] Player UI: Echap > Parametres > Server-Specific. The vanilla Remote Admin M panel is not replaced.");
-        LabLogger.Info("[SiteRP Jobs] RA staff automatically receive siterp.jobs.* and slwardrobe.* through SiteRpPermissionProvider.");
+        LabLogger.Info("[SiteRP.Core] v1.3.0 active - mandatory rules + in-game Hint/Radio jobs UI + persistent whitelists + zero/one-player permanent round + SLWardrobe + STAFF + Operational.");
+        LabLogger.Info("[SiteRP UI] Arrival flow: RULES -> JOB -> DEPLOYMENT. Radio RANGE = next, Radio POWER = validate, SiteRP J = back/open.");
+        LabLogger.Info("[SiteRP Jobs] RA staff receive siterp.jobs.* and slwardrobe.* through SiteRpPermissionProvider; whitelist changes save immediately.");
         LabLogger.Info("[SiteRP.SCP] Initial state: Site NORMAL; vanilla/custom SCP contained; C.A.S.S.I.E. cooperative.");
     }
 
@@ -67,6 +70,8 @@ public sealed class SiteRpCorePlugin : Plugin
 
         foreach (Player player in Player.ReadyList)
         {
+            SiteRpInteractiveUi.CleanupPlayer(player);
+
             if (!StaffSnapshots.TryGetValue(player.UserId, out StaffSnapshot snapshot))
                 continue;
 
@@ -78,6 +83,30 @@ public sealed class SiteRpCorePlugin : Plugin
         Round.IsLocked = false;
         Instance = null;
         LabLogger.Info("[SiteRP.Core] disabled.");
+    }
+
+    internal static void EnsurePermanentRoundStarted()
+    {
+        if (!PermanentRoundEnabled)
+            return;
+
+        try
+        {
+            Round.KeepRoundOnOne = true;
+            Round.IsLocked = true;
+
+            if (!Round.IsRoundStarted)
+            {
+                Round.Start();
+                LabLogger.Info("[SiteRP.Round] ForceRoundStart demande pour maintenir le Site actif meme avec 0/1 joueur.");
+            }
+        }
+        catch (Exception ex)
+        {
+            // A zero-player start can be rejected during a very early boot phase. The join
+            // handler retries, so this is deliberately non-fatal.
+            LabLogger.Warn($"[SiteRP.Round] Demarrage permanent reporte: {ex.GetBaseException().Message}");
+        }
     }
 
     internal static int CleanupDecorativeRagdolls(string phase)
