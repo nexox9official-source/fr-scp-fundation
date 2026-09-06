@@ -62,7 +62,18 @@ public static class JobRuntime
         return count;
     }
 
-    public static bool CanJoin(Player player, JobDefinition job, out string reason)
+    public static bool CanJoinIgnoringSameRole(Player player, JobDefinition job, out string reason)
+    {
+        if (SiteRpUcrBridge.TryGetActiveRoleId(player, out int currentRole) && currentRole == job.UcrRoleId)
+        {
+            reason = "Métier actuel";
+            return false;
+        }
+
+        return CanJoin(player, job, out reason, ignoreCooldown: false);
+    }
+
+    public static bool CanJoin(Player player, JobDefinition job, out string reason, bool ignoreCooldown = false)
     {
         reason = string.Empty;
         if (player == null)
@@ -73,20 +84,20 @@ public static class JobRuntime
 
         if (SiteRpUcrBridge.TryGetActiveRoleId(player, out int currentRole) && currentRole == job.UcrRoleId)
         {
-            reason = "Tu occupes deja ce metier.";
+            reason = "Tu occupes déjà ce métier.";
             return false;
         }
 
-        int cooldown = GetRemainingCooldown(player);
+        int cooldown = ignoreCooldown ? 0 : GetRemainingCooldown(player);
         if (cooldown > 0)
         {
-            reason = $"Changement de metier en cooldown : encore {cooldown}s.";
+            reason = $"Cooldown métier : encore {cooldown}s.";
             return false;
         }
 
         if (job.AccessMode == JobAccessMode.StaffOnly && !IsStaff(player))
         {
-            reason = "Acces STAFF uniquement.";
+            reason = "Accès STAFF uniquement.";
             return false;
         }
 
@@ -94,7 +105,7 @@ public static class JobRuntime
             !IsStaff(player) &&
             !JobWhitelistRepository.IsWhitelisted(GetPersistentUserId(player), job.UcrRoleId))
         {
-            reason = "Acces reserve : tu n'es pas whitelist pour ce metier.";
+            reason = "Accès réservé : whitelist requise.";
             return false;
         }
 
@@ -103,7 +114,7 @@ public static class JobRuntime
             int occupied = CountPlayersOnRole(job.UcrRoleId);
             if (occupied >= job.MaxPlayers)
             {
-                reason = $"Role complet ({occupied}/{job.MaxPlayers}).";
+                reason = $"Rôle complet ({occupied}/{job.MaxPlayers}).";
                 return false;
             }
         }
@@ -111,21 +122,21 @@ public static class JobRuntime
         return true;
     }
 
-    public static bool TryJoin(Player player, int roleId, out string response)
+    public static bool TryJoin(Player player, int roleId, out string response, bool initialDeployment = false)
     {
         JobDefinition? job = JobCatalog.Find(roleId);
         if (job == null)
         {
-            response = $"Role SiteRP inconnu: {roleId}.";
+            response = $"Rôle SiteRP inconnu: {roleId}.";
             return false;
         }
 
-        if (!CanJoin(player, job, out response))
+        if (!CanJoin(player, job, out response, ignoreCooldown: initialDeployment))
             return false;
 
         if (!SiteRpUcrBridge.TrySpawnRole(player, roleId, out string error))
         {
-            response = string.IsNullOrWhiteSpace(error) ? "UCR n'a pas pu attribuer le metier." : error;
+            response = string.IsNullOrWhiteSpace(error) ? "UCR n'a pas pu attribuer le métier." : error;
             return false;
         }
 
@@ -133,7 +144,7 @@ public static class JobRuntime
             LastJobChanges[GetPersistentUserId(player)] = DateTime.UtcNow;
 
         string skin = string.IsNullOrWhiteSpace(job.WardrobeName) ? "apparence standard" : job.WardrobeName;
-        response = $"Metier attribue: {job.Name}. Tenue: {skin}. Cooldown: {JobChangeCooldownSeconds}s.";
+        response = $"Métier attribué: {job.Name}. Tenue: {skin}.";
         return true;
     }
 
