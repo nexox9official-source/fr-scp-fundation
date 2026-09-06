@@ -18,11 +18,12 @@ public sealed class SiteRpCorePlugin : Plugin
     public override string Name => "SiteRP.Core";
     public override string Description => "Persistent SCP:SL SiteRP core: HSM admission/jobs HUD, native customizable controls, full custom SLWardrobe/ProjectMER morph per UCR job, custom-team identity, SCP-079 cooperative gameplay, physical alarm controls, UCR whitelists and staff mode.";
     public override string Author => "SiteRP";
-    public override Version Version => new(1, 7, 2);
+    public override Version Version => new(1, 7, 3);
     public override Version RequiredApiVersion { get; } = new(LabApiProperties.CompiledVersion);
 
     internal static SiteRpCorePlugin? Instance { get; private set; }
     internal SiteRpEvents Events { get; } = new();
+    internal SiteRpSite76Events Site76Events { get; } = new();
 
     public static bool PermanentRoundEnabled { get; set; } = true;
     public static bool ContainmentLocked { get; set; } = true;
@@ -33,7 +34,7 @@ public sealed class SiteRpCorePlugin : Plugin
     public static bool CleanDecorativeRagdolls { get; set; } = true;
     public static bool BlockBloodDecals { get; set; } = true;
     public static bool AutomaticMapAudit { get; set; } = false;
-    public static bool OperationalMapEnabled { get; set; } = true;
+    public static bool OperationalMapEnabled { get; set; } = false;
 
     internal static Dictionary<string, StaffSnapshot> StaffSnapshots { get; } = new(StringComparer.OrdinalIgnoreCase);
 
@@ -42,6 +43,7 @@ public sealed class SiteRpCorePlugin : Plugin
         Instance = this;
         SiteRpScpStateManager.Reset();
         CustomHandlersManager.RegisterEventsHandler(Events);
+        CustomHandlersManager.RegisterEventsHandler(Site76Events);
         SiteRpScp079Policy.Register();
 
         PermissionsManager.RegisterProvider<SiteRpPermissionProvider>();
@@ -50,13 +52,13 @@ public sealed class SiteRpCorePlugin : Plugin
 
         EnsurePermanentRoundStarted();
 
-        LabLogger.Info("[SiteRP.Core] v1.7.2 active - full custom morph per UCR role + HSM HUD + custom-team identity + SCP-079 gameplay + physical alarms.");
+        LabLogger.Info("[SiteRP.Core] v1.7.3 active - Site-76 community map + official Site-76 spawns + 140/140 community-derived morphs + HSM HUD + custom-team identity + SCP-079 gameplay + physical alarms.");
         LabLogger.Info("[SiteRP UI] HUD controls: suggested J toggle, arrows navigate, Enter validates. Players may customize these keys once; .hud commands are fallback only.");
         LabLogger.Info("[SiteRP UI] M never opens the SiteRP HUD and remains available for the server/native admin interface.");
-        LabLogger.Info("[SiteRP Skins] Every loaded UCR job requests SiteRP_Role_<ID>; v1.7.2 morphs can hide the vanilla body and replace the visible silhouette with ProjectMER parts.");
+        LabLogger.Info("[SiteRP Skins] Every loaded UCR job requests SiteRP_Role_<ID>; v1.7.3 provides a community-derived ProjectMER/SLWardrobe morph for all 140 UCR jobs.");
         LabLogger.Info("[SiteRP Teams] UCT members display their custom team name instead of the underlying vanilla role when the bridge is available.");
         LabLogger.Info("[SiteRP.079] Cooperative protocol: normal doors/cameras/ping; emergency permissions scale with Site alarm; lethal systems remain hostile-only.");
-        LabLogger.Info("[SiteRP.Alarm] Physical NORMAL/INCIDENT/BREACH/MAJOR/EVAC controls are installed by SiteRP Operational.");
+        LabLogger.Info("[SiteRP.Alarm] Physical NORMAL/INCIDENT/BREACH/MAJOR/EVAC controls are installed beside the Site-76 command Map System.");
         LabLogger.Info("[SiteRP Jobs] Custom player roles deploy through their UCR spawn_settings. Radio remains vanilla.");
     }
 
@@ -66,7 +68,9 @@ public sealed class SiteRpCorePlugin : Plugin
         JobMenuManager.Unregister();
         PermissionsManager.UnregisterProvider<SiteRpPermissionProvider>();
         SiteRpScp079Policy.Unregister();
+        CustomHandlersManager.UnregisterEventsHandler(Site76Events);
         CustomHandlersManager.UnregisterEventsHandler(Events);
+        SiteRpSite76Panel.Remove();
         SiteRpOperationalMap.Remove();
 
         foreach (Player player in Player.ReadyList)
