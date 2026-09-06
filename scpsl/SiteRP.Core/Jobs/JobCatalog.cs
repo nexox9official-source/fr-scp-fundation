@@ -4,7 +4,7 @@ using LabApi.Loader.Features.Paths;
 namespace SiteRP.Core.Jobs;
 
 /// <summary>
-/// Builds the SiteRP jobs menu directly from every UCR YAML on this server.
+/// Builds the SiteRP jobs selector directly from every UCR YAML on this server.
 /// Access policy stays controlled by SiteRP, while names/slots automatically follow UCR.
 /// </summary>
 public static class JobCatalog
@@ -56,7 +56,7 @@ public static class JobCatalog
             .ToList()
             .AsReadOnly();
 
-        Logger.Info($"[SiteRP Jobs] {_jobs.Count} roles UCR charges dans le menu M.");
+        Logger.Info($"[SiteRP Jobs] {_jobs.Count} roles UCR charges dans le selecteur RP.");
     }
 
     public static JobDefinition? Find(int roleId) => _jobs.FirstOrDefault(x => x.UcrRoleId == roleId);
@@ -149,6 +149,12 @@ public static class JobCatalog
         if (id >= 1621 && id <= 1624) return "SiteRP_Omega1";
         if (id >= 1631 && id <= 1635) return "SiteRP_Beta7";
         if (id >= 1641 && id <= 1645) return "SiteRP_Nu7";
+
+        // Units without their final bespoke wardrobe still receive the clean generic MTF
+        // family instead of falling back to an unrelated vanilla appearance.
+        if (id >= 1651 && id <= 1774)
+            return id % 10 == 1 ? "SiteRP_MTFCommand" : "SiteRP_MTF";
+
         if (id == 1999) return "SiteRP_Staff";
         return string.Empty;
     }
