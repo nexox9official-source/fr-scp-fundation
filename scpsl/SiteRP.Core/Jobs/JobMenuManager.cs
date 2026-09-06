@@ -50,7 +50,10 @@ public static class JobMenuManager
 
         ServerSpecificSettingsSync.DefinedSettings = _foreignSettings.Concat(_ownedSettings).ToArray();
         ServerSpecificSettingsSync.ServerOnSettingValueReceived += OnSettingValueReceived;
-        ServerSpecificSettingsSync.ServerOnStatusReceived += OnStatusReceived;
+
+        // Do NOT resend settings from ServerOnStatusReceived. Sending SSS settings can itself
+        // cause another client status/value sync. With other SSS plugins (SLWardrobe in
+        // particular), that created a feedback loop and thousands of cosmetic toggle events.
         ServerSpecificSettingsSync.Version = Math.Max(1, ServerSpecificSettingsSync.Version + 1);
         ServerSpecificSettingsSync.SendToAll();
 
@@ -64,7 +67,6 @@ public static class JobMenuManager
             return;
 
         ServerSpecificSettingsSync.ServerOnSettingValueReceived -= OnSettingValueReceived;
-        ServerSpecificSettingsSync.ServerOnStatusReceived -= OnStatusReceived;
         PlayerCategoryIndexes.Clear();
 
         ServerSpecificSettingsSync.DefinedSettings = _foreignSettings;
@@ -161,12 +163,6 @@ public static class JobMenuManager
         ServerSpecificSettingsSync.SendToPlayer(hub, personalized);
     }
 
-    private static void OnStatusReceived(ReferenceHub hub, SSSUserStatusReport _)
-    {
-        // Status is sent when the Server-Specific tab is opened/closed. Re-send the player's filtered menu.
-        SendCustomizedMenu(hub, GetCategoryIndex(hub));
-    }
-
     private static void OnSettingValueReceived(ReferenceHub hub, ServerSpecificSettingBase setting)
     {
         Player? player = Player.Get(hub);
@@ -177,7 +173,13 @@ public static class JobMenuManager
         {
             int categoryIndex = categorySetting.SyncSelectionIndexRaw;
             categoryIndex = Math.Max(0, Math.Min(categoryIndex, _categories.Length - 1));
-            SendCustomizedMenu(hub, categoryIndex);
+
+            // Do not resend if the client simply echoed the category currently displayed.
+            // This also prevents a SSS feedback storm with other plugins' settings.
+            if (GetCategoryIndex(hub) != categoryIndex)
+                SendCustomizedMenu(hub, categoryIndex);
+            else
+                PlayerCategoryIndexes[hub] = categoryIndex;
             return;
         }
 
