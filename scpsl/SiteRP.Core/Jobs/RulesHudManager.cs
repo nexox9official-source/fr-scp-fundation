@@ -3,7 +3,7 @@ using System.Text;
 namespace SiteRP.Core.Jobs;
 
 /// <summary>
-/// Mandatory SiteRP rules overlay rendered with standard SCP:SL hints.
+/// Mandatory SiteRP rules overlay rendered through HintServiceMeow when available.
 /// No client mod is required.
 /// </summary>
 public static class RulesHudManager
@@ -103,7 +103,7 @@ public static class RulesHudManager
         {
             state.PageIndex++;
             response = $"Page {state.PageIndex + 1}/{pageCount}.";
-            Render(player, state, "Continue la lecture. Entrée passe à la page suivante.");
+            Render(player, state, "Continue la lecture. Utilise .hud select pour passer à la page suivante.");
             return true;
         }
 
@@ -132,7 +132,7 @@ public static class RulesHudManager
             return;
         if (States.TryGetValue(JobRuntime.GetPersistentUserId(player), out RulesHudState? state))
             state.Open = false;
-        player.SendHint("<align=center><size=20><color=#AEB9C6>Interface SiteRP fermée.</color></size></align>", 2f);
+        SiteRpHudRenderer.Hide(player);
     }
 
     public static void Cleanup(Player player)
@@ -140,6 +140,7 @@ public static class RulesHudManager
         if (player is null)
             return;
         States.Remove(JobRuntime.GetPersistentUserId(player));
+        SiteRpHudRenderer.Cleanup(player);
     }
 
     private static void Render(Player player, RulesHudState state, string? flash = null)
@@ -150,7 +151,7 @@ public static class RulesHudManager
         IReadOnlyList<string> pages = SiteRpRulesRepository.Pages;
         if (pages.Count == 0)
         {
-            player.SendHint("<align=center><size=26><color=#FF6961><b>SITERP — RÈGLEMENT INDISPONIBLE</b></color></size></align>", 8f);
+            SiteRpHudRenderer.Show(player, "<align=center><size=26><color=#FF6961><b>SITERP — RÈGLEMENT INDISPONIBLE</b></color></size></align>", 8f);
             return;
         }
 
@@ -161,7 +162,7 @@ public static class RulesHudManager
         int remaining = Math.Max(0, SiteRpRulesRepository.MinimumReadSeconds - elapsed);
 
         StringBuilder sb = new();
-        sb.Append("<align=center><voffset=-300>");
+        sb.Append("<align=center>");
         sb.Append("<size=32><color=#62A8FF><b>SITERP // DOSSIER D'ADMISSION</b></color></size>\n");
         sb.Append("<size=16><color=#8392A5>RÈGLEMENT v").Append(Escape(SiteRpRulesRepository.CurrentVersion))
             .Append("  •  PAGE ").Append(state.PageIndex + 1).Append('/').Append(pages.Count).Append("</color></size>\n");
@@ -170,22 +171,22 @@ public static class RulesHudManager
         sb.Append("<size=18><color=#DCE6F2>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</color></size>\n");
 
         if (accepted)
-            sb.Append("<size=16><color=#73D673><b>✓ Règlement déjà accepté.</b> ENTRÉE ouvre les métiers.</color></size>\n");
+            sb.Append("<size=16><color=#73D673><b>✓ Règlement déjà accepté.</b> .hud select ouvre les métiers.</color></size>\n");
         else if (!last)
-            sb.Append("<size=16><color=#62A8FF><b>ENTRÉE</b> : page suivante</color></size>\n");
+            sb.Append("<size=16><color=#62A8FF><b>.hud select</b> : page suivante</color></size>\n");
         else if (remaining > 0)
             sb.Append("<size=16><color=#FFB84D>Dernière page — lecture minimum: encore <b>").Append(remaining).Append("s</b>.</color></size>\n");
         else
-            sb.Append("<size=17><color=#73D673><b>ENTRÉE : J'ACCEPTE LE RÈGLEMENT</b></color></size>\n");
+            sb.Append("<size=17><color=#73D673><b>.hud select : J'ACCEPTE LE RÈGLEMENT</b></color></size>\n");
 
         if (!string.IsNullOrWhiteSpace(flash))
             sb.Append("<size=15><color=#FFB84D>").Append(Escape(flash)).Append("</color></size>\n");
 
         sb.Append("\n<size=14><color=#8EA0B5>.hud prev / next : pages  •  .hud select : continuer / valider  •  .hud close : fermer</color></size>\n");
         sb.Append("<size=13><color=#647487>Choisis librement tes touches avec bind/cmdbind. <b>M reste réservé à l'interface admin.</b></color></size>");
-        sb.Append("</voffset></align>");
+        sb.Append("</align>");
 
-        player.SendHint(sb.ToString(), 30f);
+        SiteRpHudRenderer.Show(player, sb.ToString(), 30f);
     }
 
     private static RulesHudState GetState(Player player)
