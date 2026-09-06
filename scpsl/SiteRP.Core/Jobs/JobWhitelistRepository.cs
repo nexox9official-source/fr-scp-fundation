@@ -1,33 +1,52 @@
-using System.Text.Json;
 using LabApi.Loader.Features.Paths;
 
 namespace SiteRP.Core.Jobs;
 
+/// <summary>
+/// Dependency-free persistent whitelist store. One record per line:
+/// roleId|steamId64|grantedBy|timestampUtc
+/// </summary>
 public static class JobWhitelistRepository
 {
     private static readonly object Sync = new();
     private static WhitelistStore _store = new();
 
     public static string DirectoryPath => Path.Combine(PathManager.Configs.FullName, Server.Port.ToString(), "SiteRP");
-    public static string FilePath => Path.Combine(DirectoryPath, "JobWhitelists.json");
+    public static string FilePath => Path.Combine(DirectoryPath, "JobWhitelists.txt");
 
     public static void Load()
     {
         lock (Sync)
         {
             Directory.CreateDirectory(DirectoryPath);
+            _store = new WhitelistStore();
+
             if (!File.Exists(FilePath))
             {
-                _store = new WhitelistStore();
                 SaveUnsafe();
                 return;
             }
 
             try
             {
-                WhitelistStore? parsed = JsonSerializer.Deserialize<WhitelistStore>(File.ReadAllText(FilePath));
-                _store = parsed ?? new WhitelistStore();
-                _store.Entries ??= new List<WhitelistEntry>();
+                foreach (string rawLine in File.ReadAllLines(FilePath))
+                {
+                    string line = rawLine.Trim();
+                    if (line.Length == 0 || line.StartsWith("#", StringComparison.Ordinal))
+                        continue;
+
+                    string[] parts = line.Split('|');
+                    if (parts.Length < 2 || !int.TryParse(parts[0], out int roleId))
+                        continue;
+
+                    _store.Entries.Add(new WhitelistEntry
+                    {
+                        RoleId = roleId,
+                        SteamId64 = parts[1].Trim(),
+                        GrantedBy = parts.Length >= 3 ? Unescape(parts[2]) : string.Empty,
+                        GrantedAtUtc = parts.Length >= 4 ? parts[3].Trim() : string.Empty,
+                    });
+                }
             }
             catch (Exception ex)
             {
@@ -69,7 +88,7 @@ public static class JobWhitelistRepository
             {
                 SteamId64 = steamId64.Trim(),
                 RoleId = roleId,
-                GrantedBy = grantedBy,
+                GrantedBy = grantedBy ?? string.Empty,
                 GrantedAtUtc = DateTime.UtcNow.ToString("O"),
             });
             SaveUnsafe();
@@ -92,10 +111,23 @@ public static class JobWhitelistRepository
     {
         Directory.CreateDirectory(DirectoryPath);
         string temp = FilePath + ".tmp";
-        string json = JsonSerializer.Serialize(_store, new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(temp, json);
-        File.Move(temp, FilePath, true);
+        List<string> lines = new()
+        {
+            "# SiteRP persistent job whitelists",
+            "# roleId|steamId64|grantedBy|timestampUtc",
+        };
+
+        foreach (WhitelistEntry entry in _store.Entries.OrderBy(x => x.RoleId).ThenBy(x => x.SteamId64, StringComparer.OrdinalIgnoreCase))
+            lines.Add($"{entry.RoleId}|{entry.SteamId64}|{Escape(entry.GrantedBy)}|{entry.GrantedAtUtc}");
+
+        File.WriteAllLines(temp, lines);
+        if (File.Exists(FilePath))
+            File.Delete(FilePath);
+        File.Move(temp, FilePath);
     }
+
+    private static string Escape(string value) => (value ?? string.Empty).Replace("|", "/").Replace("\r", " ").Replace("\n", " ");
+    private static string Unescape(string value) => value ?? string.Empty;
 
     private static WhitelistEntry Clone(WhitelistEntry entry) => new()
     {
