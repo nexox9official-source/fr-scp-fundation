@@ -22,6 +22,7 @@ public static class JobMenuManager
             return;
 
         JobWhitelistRepository.Load();
+        JobCatalog.Reload();
         RebuildJobList();
 
         string[] options = _menuJobs.Select(FormatOption).ToArray();
@@ -37,7 +38,6 @@ public static class JobMenuManager
         };
 
         ServerSpecificSettingBase[] existing = ServerSpecificSettingsSync.DefinedSettings ?? Array.Empty<ServerSpecificSettingBase>();
-        // Avoid duplicates if the assembly was hot-reloaded.
         existing = existing.Where(x => x.SettingId != DropdownId && x.SettingId != JoinButtonId && x.SettingId != InfoButtonId).ToArray();
         ServerSpecificSettingsSync.DefinedSettings = existing.Concat(_ownedSettings).ToArray();
         ServerSpecificSettingsSync.ServerOnSettingValueReceived += OnSettingValueReceived;
@@ -69,8 +69,7 @@ public static class JobMenuManager
 
     public static void Refresh()
     {
-        bool wasRegistered = _registered;
-        if (wasRegistered)
+        if (_registered)
             Unregister();
         Register();
     }
