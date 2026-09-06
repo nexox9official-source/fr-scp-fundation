@@ -47,8 +47,7 @@ public static class JobHudKeybindManager
                 ToggleId,
                 "SITERP : ouvrir / fermer le HUD",
                 KeyCode.J,
-                true,
-                "Ouvre le reglement si necessaire, sinon le menu des metiers. Appuie de nouveau pour fermer."),
+                true),
             new SSKeybindSetting(
                 PreviousJobId,
                 "SITERP : metier / page precedente",
