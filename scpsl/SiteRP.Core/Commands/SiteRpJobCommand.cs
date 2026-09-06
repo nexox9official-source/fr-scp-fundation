@@ -13,7 +13,7 @@ public sealed class SiteRpJobCommand : ICommand
 {
     public string Command => "siterpjob";
     public string[] Aliases => new[] { "srjob", "jobsrp", "job", "jobs", "metier", "metiers" };
-    public string Description => "SiteRP Jobs: ouvrir l'interface native M, rejoindre un metier et gerer les whitelists persistantes.";
+    public string Description => "SiteRP Jobs: HUD metiers, deploiement et gestion des whitelists persistantes.";
 
     public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
     {
@@ -29,36 +29,93 @@ public sealed class SiteRpJobCommand : ICommand
             }
 
             SiteRpInteractiveUi.OpenJobs(actor);
-            response = "Interface SiteRP envoyee. Ouvre M -> Server Specific Settings -> METIERS.";
+            response = "HUD SiteRP ouvert. Navigation: jobs prev/next, jobs catprev/catnext, jobs select, jobs close.";
             return true;
         }
 
         string action = args[0].ToLowerInvariant();
 
-        if (action == "menu" || action == "open" || action == "ouvrir")
+        if (action == "menu" || action == "open" || action == "ouvrir" || action == "hud")
         {
-            if (actor is null)
-            {
-                response = "Cette commande doit etre executee par un joueur.";
+            if (!RequirePlayer(actor, out response))
                 return false;
-            }
 
-            SiteRpInteractiveUi.OpenJobs(actor);
-            response = "Interface SiteRP envoyee. Ouvre M -> Server Specific Settings.";
+            SiteRpInteractiveUi.OpenJobs(actor!);
+            response = "HUD SiteRP ouvert.";
+            return true;
+        }
+
+        if (action == "native" || action == "m" || action == "settings" || action == "reglages")
+        {
+            if (!RequirePlayer(actor, out response))
+                return false;
+
+            SiteRpInteractiveUi.OpenNativeJobs(actor!);
+            response = "Fallback natif envoye. Ouvre M -> Server Specific Settings -> METIERS.";
+            return true;
+        }
+
+        if (action == "prev" || action == "previous" || action == "precedent")
+        {
+            if (!RequirePlayer(actor, out response))
+                return false;
+            return JobHudManager.PreviousJob(actor!, out response);
+        }
+
+        if (action == "next" || action == "suivant")
+        {
+            if (!RequirePlayer(actor, out response))
+                return false;
+            return JobHudManager.NextJob(actor!, out response);
+        }
+
+        if (action == "catprev" || action == "categoryprev" || action == "departementprev")
+        {
+            if (!RequirePlayer(actor, out response))
+                return false;
+            return JobHudManager.PreviousCategory(actor!, out response);
+        }
+
+        if (action == "catnext" || action == "categorynext" || action == "departementnext")
+        {
+            if (!RequirePlayer(actor, out response))
+                return false;
+            return JobHudManager.NextCategory(actor!, out response);
+        }
+
+        if (action == "select" || action == "choose" || action == "confirm" || action == "confirmer")
+        {
+            if (!RequirePlayer(actor, out response))
+                return false;
+            return JobHudManager.Select(actor!, out response);
+        }
+
+        if (action == "close" || action == "fermer")
+        {
+            if (!RequirePlayer(actor, out response))
+                return false;
+            JobHudManager.Close(actor!);
+            response = "HUD SiteRP ferme.";
+            return true;
+        }
+
+        if (action == "refresh" || action == "actualiser")
+        {
+            if (!RequirePlayer(actor, out response))
+                return false;
+            JobHudManager.Refresh(actor!);
+            response = "HUD SiteRP actualise.";
             return true;
         }
 
         if (action == "join")
         {
-            if (actor is null)
-            {
-                response = "La commande join doit etre executee par un joueur.";
+            if (!RequirePlayer(actor, out response))
                 return false;
-            }
 
-            if (!SiteRpRulesRepository.HasAccepted(actor))
+            if (!SiteRpRulesRepository.HasAccepted(actor!))
             {
-                SiteRpInteractiveUi.OpenRules(actor, false);
+                SiteRpInteractiveUi.OpenRules(actor!, false);
                 response = "Accepte d'abord le reglement dans M -> Server Specific Settings.";
                 return false;
             }
@@ -69,14 +126,16 @@ public sealed class SiteRpJobCommand : ICommand
                 return false;
             }
 
-            bool initial = !SiteRpInteractiveUi.IsDeployed(actor);
-            bool result = JobRuntime.TryJoin(actor, roleId, out response, initial);
+            bool initial = !SiteRpInteractiveUi.IsDeployed(actor!);
+            bool result = JobRuntime.TryJoin(actor!, roleId, out response, initial);
             if (result && initial)
-                SiteRpInteractiveUi.MarkDeployed(actor);
+                SiteRpInteractiveUi.MarkDeployed(actor!);
+            else if (!result)
+                JobHudManager.Open(actor!, response);
             return result;
         }
 
-        if (action == "list")
+        if (action == "list" || action == "liste")
         {
             StringBuilder sb = new();
             foreach (JobDefinition job in JobCatalog.All.OrderBy(x => x.SortOrder))
@@ -100,7 +159,9 @@ public sealed class SiteRpJobCommand : ICommand
         {
             JobWhitelistRepository.Load();
             JobMenuManager.Refresh();
-            response = "SiteRP recharge : roles, whitelists, regles et interface native M actualises.";
+            if (actor is not null)
+                JobHudManager.Refresh(actor);
+            response = "SiteRP recharge : roles, whitelists, regles, HUD et fallback M actualises.";
             return true;
         }
 
@@ -125,7 +186,8 @@ public sealed class SiteRpJobCommand : ICommand
                 return false;
             }
 
-            if (JobCatalog.Find(roleId) is null)
+            JobDefinition? role = JobCatalog.Find(roleId);
+            if (role is null)
             {
                 response = $"Role SiteRP inconnu: {roleId}.";
                 return false;
@@ -141,7 +203,7 @@ public sealed class SiteRpJobCommand : ICommand
             string grantedBy = actor is null ? "SERVER" : $"{actor.Nickname} ({JobRuntime.GetPersistentUserId(actor)})";
             bool added = JobWhitelistRepository.Grant(steamId, roleId, grantedBy);
             response = added
-                ? $"Whitelist ajoutee et sauvegardee: {steamId} -> {roleId} ({JobCatalog.Find(roleId)!.Name})."
+                ? $"Whitelist ajoutee et sauvegardee: {steamId} -> {roleId} ({role.Name})."
                 : "Ce joueur possede deja cette whitelist.";
             return added;
         }
@@ -209,12 +271,31 @@ public sealed class SiteRpJobCommand : ICommand
         return false;
     }
 
+    private static bool RequirePlayer(Player? player, out string response)
+    {
+        if (player is not null)
+        {
+            response = string.Empty;
+            return true;
+        }
+
+        response = "Cette commande doit etre executee par un joueur.";
+        return false;
+    }
+
     private static bool HasManagementAccess(Player? player)
     {
         if (player is null)
             return true;
 
-        return player.RemoteAdminAccess || player.HasPermission("siterp.jobs.manage");
+        try
+        {
+            return player.RemoteAdminAccess || player.HasPermission("siterp.jobs.manage");
+        }
+        catch
+        {
+            return player.RemoteAdminAccess;
+        }
     }
 
     private static string? ResolvePersistentId(string input)
@@ -238,17 +319,24 @@ public sealed class SiteRpJobCommand : ICommand
     }
 
     private static string Help() =>
-        "SiteRP Jobs (interface native SCP:SL):\n" +
-        "Interface: M -> Server Specific Settings\n" +
-        "jobs / jobs menu = envoyer/actualiser la page Metiers\n" +
+        "SiteRP Jobs HUD:\n" +
+        "jobs = ouvrir le HUD\n" +
+        "jobs prev | next\n" +
+        "jobs catprev | catnext\n" +
+        "jobs select\n" +
+        "jobs refresh\n" +
+        "jobs close\n" +
+        "jobs native = fallback souris M -> Server Specific Settings\n" +
         "jobs list\n" +
         "jobs join <roleId>\n" +
+        "STAFF: jobs whitelist add/remove/player/role ...\n" +
+        "STAFF: jobs reload";
+
+    private static string WhitelistHelp() =>
+        "Whitelist SiteRP: gestion ingame via M -> Server Specific Settings -> WHITELISTS STAFF, ou:\n" +
         "jobs whitelist add <playerId|steamId64> <roleId>\n" +
         "jobs whitelist remove <playerId|steamId64> <roleId>\n" +
         "jobs whitelist player <playerId|steamId64>\n" +
         "jobs whitelist role <roleId>\n" +
-        "jobs reload";
-
-    private static string WhitelistHelp() =>
-        "Whitelist SiteRP: gestion dans M -> Server Specific Settings -> WHITELISTS STAFF, ou commandes add/remove/player/role. Sauvegarde immediate.";
+        "Les changements sont sauvegardes immediatement.";
 }
