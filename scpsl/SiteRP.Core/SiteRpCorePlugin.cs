@@ -16,9 +16,9 @@ namespace SiteRP.Core;
 public sealed class SiteRpCorePlugin : Plugin
 {
     public override string Name => "SiteRP.Core";
-    public override string Description => "Persistent SCP:SL DarkRP core: zero-player permanent round, mandatory onboarding, primary in-game jobs HUD, native M fallback/admin whitelist UI, persistent UCR whitelists, SLWardrobe bridge, staff mode and operational facility.";
+    public override string Description => "Persistent SCP:SL DarkRP core: integrated rules/jobs HUD, native M fallback/admin whitelist UI, persistent UCR whitelists, SLWardrobe bridge, staff mode and operational facility.";
     public override string Author => "SiteRP";
-    public override Version Version => new(1, 5, 0);
+    public override Version Version => new(1, 6, 0);
     public override Version RequiredApiVersion { get; } = new(LabApiProperties.CompiledVersion);
 
     internal static SiteRpCorePlugin? Instance { get; private set; }
@@ -46,21 +46,22 @@ public sealed class SiteRpCorePlugin : Plugin
 
         PermissionsManager.RegisterProvider<SiteRpPermissionProvider>();
         JobMenuManager.Register();
+        JobHudKeybindManager.Register();
 
-        if (PermanentRoundEnabled)
-        {
-            Round.KeepRoundOnOne = true;
-            Round.IsLocked = true;
-        }
+        // Round wrappers may not be fully initialized while LabAPI is enabling plugins.
+        // Keep the permanent-round setup inside the guarded helper instead of allowing
+        // an early NullReferenceException to disable the whole plugin.
+        EnsurePermanentRoundStarted();
 
-        LabLogger.Info("[SiteRP.Core] v1.5.0 active - jobs HUD + native M fallback/admin whitelists + rules + persistent UCR access + SLWardrobe + STAFF + Operational.");
-        LabLogger.Info("[SiteRP UI] Primary jobs interface: .jobs HUD. Navigation: prev/next/catprev/catnext/select. Native fallback: .jobs native -> M / Server Specific Settings.");
-        LabLogger.Info("[SiteRP Jobs] Ingame staff whitelist manager remains in M; grants/revokes save immediately by persistent SteamID64. RA staff receive siterp.jobs.* and slwardrobe.* through SiteRpPermissionProvider.");
+        LabLogger.Info("[SiteRP.Core] v1.6.0 active - integrated rules/jobs HUD + native M fallback/admin whitelists + persistent UCR access + SLWardrobe + STAFF + Operational.");
+        LabLogger.Info("[SiteRP UI] Primary interface: J -> REGLEMENT -> METIER -> DEPLOIEMENT. Fleches = navigation, Entree = continuer/choisir, Retour arriere = fermer. .jobs reste disponible.");
+        LabLogger.Info("[SiteRP UI] M -> Server Specific Settings reste disponible comme fallback et pour la gestion staff des whitelists. Radio vanilla intacte.");
         LabLogger.Info("[SiteRP.SCP] Initial state: Site NORMAL; vanilla/custom SCP contained; C.A.S.S.I.E. cooperative.");
     }
 
     public override void Disable()
     {
+        JobHudKeybindManager.Unregister();
         JobMenuManager.Unregister();
         PermissionsManager.UnregisterProvider<SiteRpPermissionProvider>();
         SiteRpScp079Policy.Unregister();
