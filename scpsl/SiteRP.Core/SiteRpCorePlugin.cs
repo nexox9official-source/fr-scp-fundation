@@ -18,7 +18,7 @@ public sealed class SiteRpCorePlugin : Plugin
     public override string Name => "SiteRP.Core";
     public override string Description => "Persistent SCP:SL SiteRP core: HSM admission/jobs HUD, native customizable controls, curated optional community SLWardrobe suits with vanilla fallback, custom-team identity, SCP-079 cooperative gameplay, physical alarm controls, UCR whitelists and staff mode.";
     public override string Author => "SiteRP";
-    public override Version Version => new(1, 7, 5);
+    public override Version Version => new(1, 7, 6);
     public override Version RequiredApiVersion { get; } = new(LabApiProperties.CompiledVersion);
 
     internal static SiteRpCorePlugin? Instance { get; private set; }
@@ -51,12 +51,12 @@ public sealed class SiteRpCorePlugin : Plugin
         JobHudKeybindManager.Register();
 
         // Round.Start is intentionally delayed until the facility/map exists.
-        LabLogger.Info("[SiteRP.Core] v1.7.5 active - Site-76 community map + official Site-76 spawns + vanilla-safe role appearance + HSM HUD + custom-team identity + SCP-079 gameplay + physical alarms.");
+        LabLogger.Info("[SiteRP.Core] v1.7.6 active - Site-76 community map + official Site-76 spawns + vanilla-safe role appearance + HSM HUD + custom-team identity + SCP-079 gameplay + physical alarms.");
         LabLogger.Info("[SiteRP UI] HUD controls: suggested J toggle, arrows navigate, Enter validates. Players may customize these keys once; .hud commands are fallback only.");
         LabLogger.Info("[SiteRP UI] M never opens the SiteRP HUD and remains available for the server/native admin interface.");
         LabLogger.Info("[SiteRP Skins] Community suits are opt-in and curated only. Any UCR role without a verified community suit keeps its native SCP:SL model.");
         LabLogger.Info("[SiteRP Teams] UCT members display their custom team name instead of the underlying vanilla role when the bridge is available.");
-        LabLogger.Info("[SiteRP.079] Cooperative protocol: normal doors/cameras/ping; emergency permissions scale with Site alarm; lethal systems remain hostile-only.");
+        LabLogger.Info("[SiteRP.079] Max tier + full AUX on role assignment; cooperative doors/cameras/ping; emergency permissions scale with Site alarm; lethal systems remain hostile-only.");
         LabLogger.Info("[SiteRP.Alarm] Physical NORMAL/INCIDENT/BREACH/MAJOR/EVAC controls are installed beside the Site-76 command Map System.");
         LabLogger.Info("[SiteRP Jobs] Custom player roles deploy through their UCR spawn_settings. Radio remains vanilla.");
     }

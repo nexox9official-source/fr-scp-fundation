@@ -162,7 +162,16 @@ internal sealed class SiteRpEvents : CustomEventsHandler
         SiteRpCustomTeamDisplay.ScheduleRefresh(ev.Player);
 
         if (ev.Player.Role == RoleTypeId.Scp079)
-            Timing.CallDelayed(1f, () => SiteRpScp079Policy.ShowProtocol(ev.Player));
+        {
+            Timing.CallDelayed(1f, () =>
+            {
+                if (ev.Player is null || !ev.Player.IsReady || ev.Player.Role != RoleTypeId.Scp079)
+                    return;
+
+                SiteRpScp079Policy.ApplyMaxLevel(ev.Player, out _);
+                SiteRpScp079Policy.ShowProtocol(ev.Player);
+            });
+        }
     }
 
     public override void OnPlayerLeft(PlayerLeftEventArgs ev)

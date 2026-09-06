@@ -1,6 +1,7 @@
 using System;
 using CommandSystem;
 using LabApi.Features.Wrappers;
+using PlayerRoles;
 
 namespace SiteRP.Core.Commands;
 
@@ -100,6 +101,18 @@ public sealed class SiteRpScpCommand : ICommand
         }
 
         string mode = Arg(arguments, 1).ToLowerInvariant();
+        if (mode is "max" or "boost" or "levelmax" or "tiermax")
+        {
+            Player? scp079 = Player.ReadyList.FirstOrDefault(x => x.Role == RoleTypeId.Scp079);
+            if (scp079 is null)
+            {
+                response = "Aucun joueur SCP-079 actif.";
+                return false;
+            }
+
+            return SiteRpScp079Policy.ApplyMaxLevel(scp079, out response);
+        }
+
         string state = mode switch
         {
             "healthy" or "cassie" or "foundation" or "coop" => "cooperative",
@@ -114,7 +127,7 @@ public sealed class SiteRpScpCommand : ICommand
 
         if (string.IsNullOrEmpty(state))
         {
-            response = "Usage: siterpscp 079 status|cassie|test|compromised|hostile|disabled|contained|recontained";
+            response = "Usage: siterpscp 079 status|max|cassie|test|compromised|hostile|disabled|contained|recontained";
             return false;
         }
 
@@ -137,7 +150,7 @@ public sealed class SiteRpScpCommand : ICommand
         "siterpscp site NORMAL|INCIDENT|BREACH|MAJOR_BREACH|EVACUATION\n" +
         "siterpscp set <scp> <state>\n" +
         "siterpscp release|contain|test|coop|hostile|disable <scp>\n" +
-        "siterpscp 079 status|cassie|test|compromised|hostile|disabled|contained|recontained\n" +
+        "siterpscp 079 status|max|cassie|test|compromised|hostile|disabled|contained|recontained\n" +
         "siterpscp reset";
 
     private static string Arg(ArraySegment<string> arguments, int index) =>
