@@ -9,7 +9,7 @@ namespace SiteRP.Core;
 /// <summary>
 /// Optional bridge to UncomplicatedCustomRoles without adding a hard assembly reference.
 /// This keeps SiteRP.Core bootable even if UCR is temporarily missing while preserving
-/// exact custom-role IDs when entering/leaving staff mode.
+/// exact custom-role IDs when entering/leaving staff mode and when selecting RP jobs.
 /// </summary>
 internal static class SiteRpUcrBridge
 {
@@ -49,13 +49,26 @@ internal static class SiteRpUcrBridge
         }
     }
 
-    public static bool TrySpawnRole(Player player, int roleId)
+    public static bool TryGetActiveRoleId(Player player, out int roleId)
     {
+        int? current = GetCurrentRoleId(player);
+        roleId = current ?? 0;
+        return current.HasValue;
+    }
+
+    public static bool TrySpawnRole(Player player, int roleId) => TrySpawnRole(player, roleId, out _);
+
+    public static bool TrySpawnRole(Player player, int roleId, out string error)
+    {
+        error = string.Empty;
         try
         {
             Type? managerType = FindType("UncomplicatedCustomRoles.Manager.SpawnManager");
             if (managerType is null)
+            {
+                error = "UncomplicatedCustomRoles n'est pas charge.";
                 return false;
+            }
 
             MethodInfo? clear = managerType.GetMethod("ClearCustomTypes", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
             MethodInfo? summon = managerType
@@ -63,7 +76,10 @@ internal static class SiteRpUcrBridge
                 .FirstOrDefault(m => m.Name == "SummonCustomSubclass" && m.GetParameters().Length == 3);
 
             if (summon is null)
+            {
+                error = "API SpawnManager.SummonCustomSubclass introuvable.";
                 return false;
+            }
 
             clear?.Invoke(null, new object[] { player });
             summon.Invoke(null, new object[] { player, roleId, true });
@@ -71,7 +87,8 @@ internal static class SiteRpUcrBridge
         }
         catch (Exception e)
         {
-            LabLogger.Warn($"[SiteRP.UCR] Impossible d'attribuer le role UCR {roleId}: {e.GetBaseException().Message}");
+            error = e.GetBaseException().Message;
+            LabLogger.Warn($"[SiteRP.UCR] Impossible d'attribuer le role UCR {roleId}: {error}");
             return false;
         }
     }
