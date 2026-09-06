@@ -7,7 +7,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <AssemblyName>SiteRP.Core</AssemblyName>
     <RootNamespace>SiteRP.Core</RootNamespace>
-    <Version>1.7.0</Version>
+    <Version>1.7.1</Version>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
   </PropertyGroup>
 
