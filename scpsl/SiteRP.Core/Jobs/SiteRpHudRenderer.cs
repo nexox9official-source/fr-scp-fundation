@@ -47,7 +47,7 @@ public static class SiteRpHudRenderer
             {
                 object? display = _getDisplay.Invoke(null, new object[] { player });
                 if (display is not null)
-                    _removeHint.Invoke(display, new[] { hint });
+                    InvokeHintMethod(_removeHint, display, hint);
             }
         }
         catch (Exception ex)
@@ -84,12 +84,13 @@ public static class SiteRpHudRenderer
                 // visual centre instead of relying on vanilla <voffset> semantics.
                 if (_yCoordinateProperty?.CanWrite == true)
                 {
-                    object y = Convert.ChangeType(470f, _yCoordinateProperty.PropertyType);
+                    Type target = Nullable.GetUnderlyingType(_yCoordinateProperty.PropertyType) ?? _yCoordinateProperty.PropertyType;
+                    object y = Convert.ChangeType(470f, target);
                     _yCoordinateProperty.SetValue(hint, y);
                 }
 
                 _textProperty.SetValue(hint, text);
-                _addHint.Invoke(display, new[] { hint });
+                InvokeHintMethod(_addHint, display, hint);
                 ActiveHints[id] = hint;
             }
             else
@@ -104,6 +105,48 @@ public static class SiteRpHudRenderer
             Logger.Warn($"[SiteRP HUD] HSM render failed, fallback vanilla: {ex.GetBaseException().Message}");
             return false;
         }
+    }
+
+    private static void InvokeHintMethod(MethodInfo method, object display, object hint)
+    {
+        ParameterInfo[] parameters = method.GetParameters();
+        Type parameterType = parameters[0].ParameterType;
+
+        if (parameterType.IsArray)
+        {
+            Type elementType = parameterType.GetElementType()!;
+            Array array = Array.CreateInstance(elementType, 1);
+            array.SetValue(hint, 0);
+            method.Invoke(display, new object[] { array });
+            return;
+        }
+
+        method.Invoke(display, new[] { hint });
+    }
+
+    private static MethodInfo? FindHintMethod(string name)
+    {
+        if (_playerDisplayType is null || _hintType is null)
+            return null;
+
+        MethodInfo[] methods = _playerDisplayType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .Where(m => m.Name == name && m.GetParameters().Length == 1)
+            .ToArray();
+
+        MethodInfo? direct = methods.FirstOrDefault(m =>
+        {
+            Type p = m.GetParameters()[0].ParameterType;
+            return !p.IsArray && p.IsAssignableFrom(_hintType);
+        });
+        if (direct is not null)
+            return direct;
+
+        return methods.FirstOrDefault(m =>
+        {
+            Type p = m.GetParameters()[0].ParameterType;
+            Type? element = p.IsArray ? p.GetElementType() : null;
+            return element is not null && element.IsAssignableFrom(_hintType);
+        });
     }
 
     private static bool EnsureHsm()
@@ -140,25 +183,8 @@ public static class SiteRpHudRenderer
                     return p.Length == 1 && p[0].ParameterType.IsAssignableFrom(typeof(Player));
                 });
 
-            _addHint = _playerDisplayType
-                .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-                .FirstOrDefault(m =>
-                {
-                    if (m.Name != "AddHint")
-                        return false;
-                    ParameterInfo[] p = m.GetParameters();
-                    return p.Length == 1 && !p[0].ParameterType.IsArray && p[0].ParameterType.IsAssignableFrom(_hintType);
-                });
-
-            _removeHint = _playerDisplayType
-                .GetMethods(BindingFlags.Public | BindingFlags.Instance)
-                .FirstOrDefault(m =>
-                {
-                    if (m.Name != "RemoveHint")
-                        return false;
-                    ParameterInfo[] p = m.GetParameters();
-                    return p.Length == 1 && !p[0].ParameterType.IsArray && p[0].ParameterType.IsAssignableFrom(_hintType);
-                });
+            _addHint = FindHintMethod("AddHint");
+            _removeHint = FindHintMethod("RemoveHint");
 
             bool ready = _textProperty is not null && _getDisplay is not null && _addHint is not null;
             if (ready && !_readyLogged)
