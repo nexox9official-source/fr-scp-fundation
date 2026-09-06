@@ -11,7 +11,7 @@ public sealed class SiteRpRulesCommand : ICommand
 {
     public string Command => "siterprules";
     public string[] Aliases => new[] { "rules", "regles", "reglement" };
-    public string Description => "Affiche le règlement DarkRP / SCP-RP obligatoire dans l'interface native M.";
+    public string Description => "Affiche le règlement DarkRP / SCP-RP dans le HUD SiteRP.";
 
     public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
     {
@@ -23,7 +23,7 @@ public sealed class SiteRpRulesCommand : ICommand
         }
 
         SiteRpInteractiveUi.OpenRules(player, true);
-        response = "Reglement SiteRP envoye. Ouvre M -> Server Specific Settings -> REGLEMENT.";
+        response = "HUD règlement SiteRP ouvert.";
         return true;
     }
 }
