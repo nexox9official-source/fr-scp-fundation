@@ -81,8 +81,15 @@ internal static class SiteRpUcrBridge
                 return false;
             }
 
+            // Remove the previous cosmetic before changing role so a player never keeps an
+            // Alpha/MTF helmet when switching back to a civilian/scientist role.
+            SiteRpSkinBridge.RemoveSuit(player);
             clear?.Invoke(null, new object[] { player });
             summon.Invoke(null, new object[] { player, roleId, true });
+
+            // Direct LabAPI bridge. This intentionally bypasses UCR's current Wardrobe
+            // integration bug on mixed LabAPI + EXILED Loader servers.
+            SiteRpSkinBridge.ApplyForRole(player, roleId);
             return true;
         }
         catch (Exception e)
@@ -97,6 +104,7 @@ internal static class SiteRpUcrBridge
     {
         try
         {
+            SiteRpSkinBridge.RemoveSuit(player);
             Type? managerType = FindType("UncomplicatedCustomRoles.Manager.SpawnManager");
             MethodInfo? clear = managerType?.GetMethod("ClearCustomTypes", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
             clear?.Invoke(null, new object[] { player });
