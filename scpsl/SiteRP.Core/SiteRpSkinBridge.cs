@@ -61,7 +61,7 @@ internal static class SiteRpSkinBridge
             }
 
             apply.Invoke(instance, new object[] { player, suitName });
-            LabLogger.Debug($"[SiteRP.Skins] Tenue demandee: {suitName} -> {player.Nickname}.");
+            LabLogger.Debug($"[SiteRP.Skins] Morph demande: {suitName} -> {player.Nickname}.");
             return true;
         }
         catch (Exception e)
@@ -82,11 +82,23 @@ internal static class SiteRpSkinBridge
                     m.GetParameters().Length == 1 &&
                     m.GetParameters()[0].ParameterType == typeof(Player));
 
+            MethodInfo? visibility = binderType?
+                .GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .FirstOrDefault(m => m.Name == "SetPlayerInvisibility" &&
+                    m.GetParameters().Length == 2 &&
+                    m.GetParameters()[0].ParameterType == typeof(Player) &&
+                    m.GetParameters()[1].ParameterType == typeof(bool));
+
             remove?.Invoke(null, new object[] { player });
+
+            // Full SiteRP morphs use make_wearer_invisible=true. SLWardrobe.RemoveSuit only
+            // destroys suit objects and does not itself remove the Fade effect, so always
+            // restore the native player visibility when SiteRP removes/switches a morph.
+            visibility?.Invoke(null, new object[] { player, false });
         }
         catch (Exception e)
         {
-            LabLogger.Debug($"[SiteRP.Skins] Retrait tenue ignore: {e.GetBaseException().Message}");
+            LabLogger.Debug($"[SiteRP.Skins] Retrait morph ignore: {e.GetBaseException().Message}");
         }
     }
 
