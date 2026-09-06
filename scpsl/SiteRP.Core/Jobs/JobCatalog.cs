@@ -23,6 +23,12 @@ public static class JobCatalog
 
     private static readonly HashSet<int> StaffOnlyRoleIds = new() { 1011, 1013, 1999 };
 
+    // IMPORTANT: only real, reviewed community SLWardrobe/ProjectMER suits belong here.
+    // No generated "one morph per role" fallback. If a role is not mapped, its native
+    // SCP:SL/UCR player model remains visible.
+    private static readonly IReadOnlyDictionary<int, string> VerifiedCommunityWardrobes =
+        new Dictionary<int, string>();
+
     public static IReadOnlyList<JobDefinition> All => _jobs;
 
     public static void Reload()
@@ -56,7 +62,8 @@ public static class JobCatalog
             .ToList()
             .AsReadOnly();
 
-        Logger.Info($"[SiteRP Jobs] {_jobs.Count} roles UCR charges dans le selecteur RP; chaque role utilise son morph SiteRP_Role_<ID>.");
+        int communitySuitCount = _jobs.Count(x => !string.IsNullOrWhiteSpace(x.WardrobeName));
+        Logger.Info($"[SiteRP Jobs] {_jobs.Count} roles UCR charges; {communitySuitCount} suit(s) communautaire(s) valide(s), tous les autres conservent leur modele vanilla.");
     }
 
     public static JobDefinition? Find(int roleId) => _jobs.FirstOrDefault(x => x.UcrRoleId == roleId);
@@ -134,11 +141,6 @@ public static class JobCatalog
         return "SITERP";
     }
 
-    /// <summary>
-    /// v1.7.1: every custom UCR job has its own SLWardrobe suit.  The complete server
-    /// pack ships a matching SiteRP_Role_<ID>.yml for every one of the 140 roles.
-    /// Shared ProjectMER pieces are still reused where appropriate, while the role torso,
-    /// rank/identity marks and suit definition remain dedicated to that exact job.
-    /// </summary>
-    private static string GetWardrobe(int id) => id > 0 ? $"SiteRP_Role_{id}" : string.Empty;
+    private static string GetWardrobe(int id) =>
+        VerifiedCommunityWardrobes.TryGetValue(id, out string? suitName) ? suitName : string.Empty;
 }
