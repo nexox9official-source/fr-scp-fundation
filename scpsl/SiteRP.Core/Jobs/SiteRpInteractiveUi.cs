@@ -4,8 +4,8 @@ using PlayerRoles;
 namespace SiteRP.Core.Jobs;
 
 /// <summary>
-/// Arrival/deployment state. Primary onboarding is now fully in the in-game HUD:
-/// rules first, then jobs. Native Server-Specific Settings remain a fallback/admin UI.
+/// Arrival/deployment state. Player onboarding is fully handled by the in-game HUD:
+/// rules first, then jobs. M is intentionally never used by SiteRP.
 /// </summary>
 public static class SiteRpInteractiveUi
 {
@@ -45,13 +45,9 @@ public static class SiteRpInteractiveUi
 
             player.ClearInventory();
             if (SiteRpRulesRepository.HasAccepted(player))
-            {
                 JobHudManager.Open(player, "Choisis ton département puis ton métier.");
-            }
             else
-            {
                 RulesHudManager.Open(player, "Lis les pages du règlement puis valide avec Entrée.");
-            }
         });
     }
 
@@ -69,20 +65,9 @@ public static class SiteRpInteractiveUi
         JobHudManager.Open(player);
     }
 
-    public static void OpenNativeJobs(Player player)
-    {
-        if (player is null || !player.IsReady)
-            return;
-        if (!SiteRpRulesRepository.HasAccepted(player))
-        {
-            JobMenuManager.ShowRules(player);
-            PromptM(player, "Fallback natif RÈGLEMENT prêt.");
-            return;
-        }
-
-        JobMenuManager.ShowJobs(player);
-        PromptM(player, "Fallback natif MÉTIERS prêt.");
-    }
+    // Kept only for source/binary compatibility with older commands.
+    // It now opens the normal HUD and never touches M.
+    public static void OpenNativeJobs(Player player) => OpenJobs(player);
 
     public static void OpenRules(Player player, bool reviewOnly = true)
     {
@@ -93,7 +78,7 @@ public static class SiteRpInteractiveUi
 
     public static void HandleMenuKey(Player player) => OpenJobs(player);
 
-    // Kept for binary/source compatibility with older builds. Radio is never hijacked.
+    // Kept for compatibility. Radio is never hijacked.
     public static bool HandleRadioNext(Player player) => false;
     public static bool HandleRadioConfirm(Player player) => false;
 
@@ -103,10 +88,12 @@ public static class SiteRpInteractiveUi
             return;
         DeployedPlayers.Add(JobRuntime.GetPersistentUserId(player));
         player.IsGodModeEnabled = false;
+        player.IsNoclipEnabled = false;
+        player.CustomInfo = string.Empty;
         player.SendHint(
             "<align=center><size=28><color=#73D673><b>DÉPLOIEMENT AUTORISÉ</b></color></size>\n" +
-            "<size=18>Bienvenue sur le Site.</size>\n" +
-            "<size=16>Le menu métiers reste accessible avec <b>J</b> ou <b>.jobs</b>.</size></align>",
+            "<size=18>Ton rôle est actif et tu as été déployé sur la map.</size>\n" +
+            "<size=16>Le HUD métiers reste accessible avec <b>.hud</b> / <b>.jobs</b> ou la touche que tu as choisie.</size></align>",
             7f);
     }
 
@@ -128,13 +115,5 @@ public static class SiteRpInteractiveUi
             RulesHudManager.Close(player);
         else
             JobHudManager.Close(player);
-    }
-
-    private static void PromptM(Player player, string line)
-    {
-        player.SendHint(
-            $"<align=center><size=24><color=#62A8FF><b>SITERP</b></color></size>\n" +
-            $"<size=18>{line}</size>\n<size=16>Ouvre <b>M → Server Specific Settings</b>.</size></align>",
-            6f);
     }
 }
