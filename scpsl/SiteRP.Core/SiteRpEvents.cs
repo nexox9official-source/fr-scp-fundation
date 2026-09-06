@@ -19,13 +19,7 @@ internal sealed class SiteRpEvents : CustomEventsHandler
             SiteRpMapSurvey.WriteAudit(ev.Seed);
 
         SiteRpCorePlugin.CleanupDecorativeRagdolls($"map generated (seed {ev.Seed})");
-
-        // Start the persistent Site even when the server is empty. If the base game rejects
-        // a zero-player force-start on a particular build, OnPlayerJoined retries immediately.
         Timing.CallDelayed(2f, SiteRpCorePlugin.EnsurePermanentRoundStarted);
-
-        // LabAPI's AdminToy wrappers read NetworkClient.prefabs. During MapGenerated the
-        // Facility scene can still be loading, so those prefabs may not exist yet.
         ScheduleOperationalApply(1.5f, 0);
     }
 
@@ -48,7 +42,6 @@ internal sealed class SiteRpEvents : CustomEventsHandler
         {
             if (generation != _operationalGeneration)
                 return;
-
             if (!SiteRpCorePlugin.OperationalMapEnabled || SiteRpOperationalMap.IsApplied)
                 return;
 
@@ -58,10 +51,9 @@ internal sealed class SiteRpEvents : CustomEventsHandler
 
             if (attempt >= 4)
             {
-                LabLogger.Warn($"[SiteRP.Map] Operational non applique apres {attempt + 1} tentative(s). Le reste de SiteRP continue normalement. Dernier resultat: {result}");
+                LabLogger.Warn($"[SiteRP.Map] Operational non applique apres {attempt + 1} tentative(s). Dernier resultat: {result}");
                 return;
             }
-
             ScheduleOperationalApply(1.5f + attempt, attempt + 1);
         });
     }
@@ -70,7 +62,6 @@ internal sealed class SiteRpEvents : CustomEventsHandler
     {
         if (!SiteRpCorePlugin.PermanentRoundEnabled)
             return;
-
         ev.IsAllowed = false;
         Round.KeepRoundOnOne = true;
         Round.IsLocked = true;
@@ -108,12 +99,12 @@ internal sealed class SiteRpEvents : CustomEventsHandler
 
     public override void OnPlayerInteractingDoor(PlayerInteractingDoorEventArgs ev)
     {
-        // Arrival gate: a player must read/accept the rules and select a SiteRP job before
-        // being allowed to use the Facility as an RP character.
         if (!SiteRpInteractiveUi.IsDeployed(ev.Player))
         {
             ev.IsAllowed = false;
-            ev.Player.SendBroadcast("<b><color=#62A8FF>SITERP</color></b>\nAccepte le règlement et choisis ton métier avant le déploiement.", 3);
+            ev.Player.SendBroadcast(
+                "<b><color=#62A8FF>SITERP</color></b>\nOuvre M → Server Specific Settings, accepte le règlement puis choisis ton métier.",
+                4);
             return;
         }
 
@@ -125,37 +116,16 @@ internal sealed class SiteRpEvents : CustomEventsHandler
             return;
 
         ev.IsAllowed = false;
-        string state = scpId is null
-            ? "CONTAINED"
-            : SiteRpScpStateManager.Get(scpId).ToString().ToUpperInvariant();
-
-        ev.Player.SendBroadcast(
-            $"<b>CONFINEMENT ACTIF</b>\nEtat SCP: {state}. Porte verrouillee par SiteRP.",
-            3);
+        string state = scpId is null ? "CONTAINED" : SiteRpScpStateManager.Get(scpId).ToString().ToUpperInvariant();
+        ev.Player.SendBroadcast($"<b>CONFINEMENT ACTIF</b>\nEtat SCP: {state}. Porte verrouillee par SiteRP.", 3);
     }
 
-    public override void OnPlayerChangingRadioRange(PlayerChangingRadioRangeEventArgs ev)
-    {
-        if (!SiteRpInteractiveUi.IsOpen(ev.Player))
-            return;
-
-        ev.IsAllowed = false;
-        SiteRpInteractiveUi.HandleRadioNext(ev.Player);
-    }
-
-    public override void OnPlayerTogglingRadio(PlayerTogglingRadioEventArgs ev)
-    {
-        if (!SiteRpInteractiveUi.IsOpen(ev.Player))
-            return;
-
-        ev.IsAllowed = false;
-        SiteRpInteractiveUi.HandleRadioConfirm(ev.Player);
-    }
+    // IMPORTANT: no radio event is intercepted here anymore.
+    // Range changes and power toggles remain 100% vanilla SCP:SL behavior.
 
     public override void OnPlayerJoined(PlayerJoinedEventArgs ev)
     {
         Player player = ev.Player;
-
         Timing.CallDelayed(0.8f, SiteRpCorePlugin.EnsurePermanentRoundStarted);
         Timing.CallDelayed(1.6f, () =>
         {
@@ -165,9 +135,10 @@ internal sealed class SiteRpEvents : CustomEventsHandler
             SiteRpInteractiveUi.BeginArrival(player);
             player.SendBroadcast(
                 "<b><color=#62A8FF>SITERP — BIENVENUE</color></b>\n" +
+                "Ouvre <b>M → Server Specific Settings</b>.\n" +
                 "Règlement obligatoire puis choix du métier avant déploiement.\n" +
-                "Dans l'interface: PORTÉE RADIO = suivant, ON/OFF = valider, J = retour.",
-                10);
+                "La radio fonctionne normalement.",
+                12);
         });
     }
 
